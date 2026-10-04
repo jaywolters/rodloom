@@ -40,9 +40,9 @@
    if(sampled.has(item.id)){chip.style.background=sampled.get(item.id);button.disabled=false;}
    image.onload=()=>{
     try{const color=sampled.get(item.id)||approximateColor(image);sampled.set(item.id,color);chip.style.background=color;button.disabled=false;}
-    catch{button.disabled=false;button.title+=' — photo sampling unavailable; select preview color after adding';}
+    catch{button.disabled=false;button.title+=' — photo sampling unavailable; neutral preview placeholder';}
    };
-   image.onerror=()=>{image.alt='Photo unavailable';button.disabled=false;button.title+=' — select preview color after adding';};
+   image.onerror=()=>{image.alt='Photo unavailable';button.disabled=false;button.title+=' — neutral preview placeholder';};
    image.crossOrigin='anonymous';
    image.src=`${apiBase}/api/swatch?id=${encodeURIComponent(item.id)}`;
    const name=make('strong','',item.name), detail=make('small','',`${item.line} · D`);
@@ -52,7 +52,7 @@
     const color=sampled.get(item.id);
     if(state.bands.length>=100){notify('Maximum 100 bands per design.');return;}
     addBand({name:item.name,color:color||'#808080',turns:item.finish==='metallic'?5:10,finish:item.finish,brand:item.brand,line:item.line,sku:item.sku,code:item.code,catalog:true,source:item.source});
-    notify(color?`${item.name} added · preview color is approximate`:`${item.name} added · set its preview color manually`);
+    notify(color?`${item.name} added · preview color is approximate`:`${item.name} added · preview unavailable, shown in neutral gray`);
    };
    const link=make('a','catalog-source','View product');link.href=item.source;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label',`View ${item.brand} ${item.name} ${item.line} on Mud Hole`);
    card.append(button,link);results.append(card);
@@ -68,7 +68,7 @@
    items=data.items;warnings=data.warnings||[];loaded=true;updateLines();renderCatalog();
    if(warnings.length)$('catalog-retry').hidden=false;
   }catch{
-   loaded=false;$('catalog-status').textContent='Catalog unavailable. Retry shortly; for local use, start python server.py. You can still add custom color bands.';$('catalog-retry').hidden=false;
+   loaded=false;$('catalog-status').textContent='Catalog unavailable. Retry shortly; for local use, start python server.py. Fuji and ProWrap catalog threads are required to add colors.';$('catalog-retry').hidden=false;
   }
  }
  $('thread-brand').onchange=()=>{updateLines();renderCatalog();};$('thread-line').onchange=renderCatalog;
