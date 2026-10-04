@@ -13,7 +13,7 @@ const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS)
 
 test('built-in library keeps Durado no line as default and removes Durado',()=>{
  assert.deepEqual(designs.map(d=>d.name),['Durado no line','Aqua Shade','CalStar Grapfighter','Zarape']);
- assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,82]);
+ assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,75]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
 });
 
@@ -21,10 +21,10 @@ test('Zarape uses only Fuji and ProWrap catalog threads and stays within the ban
  const design=designs.find(d=>d.name==='Zarape');
  assert.equal(design.texture,true);
  assert.ok(design.bands.length<=100);
- assert.equal(design.bands.reduce((sum,b)=>sum+b.turns,0),1000);
+ assert.equal(design.bands.reduce((sum,b)=>sum+b.turns*(b.wrap==='spiral'?2:1),0),1000);
  assert.equal(wrapSummary(design.bands,design.coverage,design.diameter).length,250);
  assert.equal(design.coverage,0.25);
- for(const band of design.bands){
+ for(const band of design.bands.flatMap(b=>b.wrap==='spiral'?[b,b.secondary]:[b])){
   assert.ok(['Fuji','ProWrap'].includes(band.brand));
   assert.equal(band.catalog,true);
   assert.ok(band.sku);
@@ -33,6 +33,21 @@ test('Zarape uses only Fuji and ProWrap catalog threads and stays within the ban
  assert.equal(design.bands[0].sku,'RNS-D-361');
  assert.equal(design.bands.at(-1).sku,'RNS-D-434');
  assert.equal(design.bands.filter(b=>b.sku==='RNS-D-361'&&b.turns===50).length,2);
+});
+
+test('Zarape has seven tapered paired-thread fades without changing its trim bands',()=>{
+ const design=designs.find(d=>d.name==='Zarape');
+ const spirals=design.bands.filter(b=>b.wrap==='spiral');
+ assert.equal(spirals.length,21);
+ for(let i=0;i<spirals.length;i+=3){
+  const [entry,center,exit]=spirals.slice(i,i+3);
+  assert.ok(center.turns>entry.turns);
+  assert.ok(center.turns>exit.turns);
+  assert.equal(entry.sku,center.sku);
+  assert.equal(exit.secondary.sku,center.secondary.sku);
+  assert.notEqual(center.sku,center.secondary.sku);
+ }
+ assert.equal(wrapSummary(design.bands,design.coverage,design.diameter).length,250);
 });
 
 test('new patterns preserve texture, center turns, and spiral directions',()=>{

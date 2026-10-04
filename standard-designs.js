@@ -24,19 +24,28 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
  const yellow=nylon('122 Neon Yellow','#e9fa20','neon','122','34440556183685');
  const dark=nylon('862 Twilight Black','#16151a','regular','862','34440558674053');
  const solid=(t,turns)=>({...t,turns});
- // Change the ratio of alternating solid turns for a buildable stepped fade.
- const fade=(from,to)=>[1,2,3,4].flatMap(n=>[solid(from,5-n),solid(to,n)]);
+ // Keep each fade 20 thread-widths long, with a paired center and tapered solids.
+ // Outgoing-only turns shrink toward the center; incoming-only turns grow away.
+ const fade=(from,to)=>[
+  solid(from,2),spiral(from,to,1,undefined,1),
+  solid(from,1),spiral(from,to,1,undefined,5),solid(to,1),
+  spiral(from,to,1,undefined,1),solid(to,2)
+ ];
  const pinkTrim=()=>[solid(white,1),solid(green,1),solid(pink,12),solid(green,1),solid(white,1)];
- // Proportionally resize solid patterns, distributing rounding to hit the exact length.
+ // Resize by axial thread-widths: paired spiral turns cover twice a solid turn.
  const toLength=(design,length)=>{
   const target=Math.round(length/design.coverage);
-  const total=design.bands.reduce((sum,b)=>sum+b.turns,0);
+  const total=design.bands.reduce((sum,b)=>sum+b.turns*(b.wrap==='spiral'?2:1),0);
   const scaled=design.bands.map((b,index)=>{
    const turns=b.turns*target/total;
-   return {index,turns:Math.floor(turns),fraction:turns-Math.floor(turns)};
+   return {index,strands:b.wrap==='spiral'?2:1,turns:Math.floor(turns),fraction:turns-Math.floor(turns)};
   });
-  const remainder=target-scaled.reduce((sum,b)=>sum+b.turns,0);
-  scaled.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index).slice(0,remainder).forEach(b=>b.turns++);
+  let remainder=target-scaled.reduce((sum,b)=>sum+b.turns*b.strands,0);
+  const ranked=scaled.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
+  for(const b of ranked){
+   if(b.strands<=remainder){b.turns++;remainder-=b.strands;}
+   if(!remainder)break;
+  }
   return {...design,bands:design.bands.map((b,index)=>({...b,turns:scaled[index].turns}))};
  };
  const spiral=(first,second,direction,secondaryTurns,turns=8)=>({...first,turns,wrap:'spiral',direction,secondary:{...second,...(secondaryTurns?{turns:secondaryTurns}:{})}});
