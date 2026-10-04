@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rod Loom — Fishing Rod Thread Wrap Design Tool</title>
+<meta name="description" content="Design fishing rod thread wraps with Rod Loom. Preview color bands and spiral fades, calculate turns and thread estimates, and export designs and wrapping recipes.">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="theme-color" content="#263a40">
+<link rel="canonical" href="https://rodloom.com/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rod Loom">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://rodloom.com/">
+<meta property="og:title" content="Rod Loom — Fishing Rod Thread Wrap Design Tool">
+<meta property="og:description" content="Plan fishing rod wraps with color bands, two-thread spiral fades, rod and flat previews, thread estimates, and printable wrapping recipes.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rod Loom — Fishing Rod Thread Wrap Design Tool">
+<meta name="twitter:description" content="Design fishing rod thread wraps, preview spiral fades, estimate thread usage, and save or export your patterns.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://rodloom.com/#website",
+      "url": "https://rodloom.com/",
+      "name": "Rod Loom",
+      "description": "A browser workbench for designing fishing rod thread wraps.",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://rodloom.com/#webpage",
+      "url": "https://rodloom.com/",
+      "name": "Rod Loom — Fishing Rod Thread Wrap Design Tool",
+      "description": "Design fishing rod thread wraps with color bands, paired spiral fades, thread estimates, and printable wrapping recipes.",
+      "isPartOf": { "@id": "https://rodloom.com/#website" },
+      "mainEntity": { "@id": "https://rodloom.com/#app" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://rodloom.com/#app",
+      "name": "Rod Loom",
+      "url": "https://rodloom.com/",
+      "description": "A fishing rod thread wrap design tool with rod and flat previews, color bands, two-thread spiral fade transitions, thread usage estimates, saved designs, and JSON and PNG exports.",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript and a modern web browser.",
+      "featureList": [
+        "Rod and flat thread wrap previews",
+        "Color bands and paired two-thread spiral fades",
+        "Fuji and ProWrap size D thread palette lookup",
+        "Wrap dimensions and approximate thread usage",
+        "Printable wrapping recipes",
+        "Local saved designs and JSON import/export",
+        "PNG image export"
+      ],
+      "isAccessibleForFree": true,
+      "inLanguage": "en"
+    }
+  ]
+}
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./"><span class="brand-icon" aria-hidden="true">▥</span> Rod Loom</a><span class="tagline">The rod wrapping workbench</span><div class="header-actions"><button id="import">Import JSON</button><button id="export">Export JSON</button><button id="save" class="primary">Save design</button></div></header>
+<main>
+<div class="workbench">
+<section class="preview-panel" aria-labelledby="preview-title">
+<div class="panel-heading"><h2 id="preview-title">On the blank</h2><div class="segmented" aria-label="Preview mode"><button id="rod-mode" class="active" aria-pressed="true">Rod view</button><button id="flat-mode" aria-pressed="false">Flat layout</button></div></div>
+<details class="scale-settings"><summary>Display scale & calibration</summary><div class="scale-controls"><label>Display scale <select id="display-scale"><option value="actual">Actual size (calibrate below)</option><option value="fit">Fit to window</option><option value="detail">4× inspection (not actual size)</option></select></label><label>Screen pixels per mm <input id="screen-scale" type="number" min="1" max="20" step="0.01" value="3.25"></label><p>Hold a physical ruler against the line below. Adjust pixels per mm until the line measures exactly 50 mm. Recalibrate after changing browser zoom or monitors.</p><div class="calibration-space"><div id="calibration-ruler"><span>50 mm</span></div></div></div><div class="setup"><div><h3>At your bench</h3><p>Actual size uses your screen calibration (default: 3.25 pixels/mm). Fit to window preserves proportions but is not life-size.</p></div><div class="setup-fields"><label>Thread coverage (mm / turn)<input id="coverage" type="number" min="0.05" max="1" step="0.01" value="0.25"></label><label>Blank diameter (mm)<input id="diameter" type="number" min="1" max="50" step="0.1" value="15"></label></div><p class="hint">Size D starts at 0.25 mm per turn. Measure a test wrap for your thread and tension. Paired spirals advance two thread widths per revolution. Thread estimate excludes setup turns, tag ends and waste.</p></div></details><div class="preview-stage"><canvas id="preview" aria-label="Preview of your thread wrapping pattern"></canvas><div class="preview-caption"><span id="preview-name">Copper water</span><span>Left to right = wrapping order</span></div></div>
+<div class="preview-controls"><label>Blank color <input id="blank" type="color" value="#263a40"></label><label><input id="texture" type="checkbox" checked> Show individual turns</label><button id="inspect">Inspect 4×</button><button id="image">Export image</button></div>
+<div class="measurements"><div><strong id="total-turns">0</strong><span>finished rod revolutions</span></div><div><strong id="total-length">0</strong><span>wrap length · mm</span></div><div><strong id="thread-length">0</strong><span>thread estimate · m</span></div></div>
+</section>
+<aside class="editor" aria-labelledby="editor-title"><div class="panel-heading"><h2 id="editor-title">Your pattern</h2><span id="band-count">7 bands</span></div><label class="name-label">Design name<input id="design-name" maxlength="80" value="Copper water"></label><details class="palette-lookup"><summary>Thread palette lookup</summary><div class="lookup-controls"><select id="thread-brand" aria-label="Thread brand"><option>ProWrap</option><option>Fuji</option></select><input id="color-search" type="search" placeholder="Search neon, gold, silver…" aria-label="Search thread colors"></div><select id="thread-line" aria-label="Thread product line"><option value="">All thread lines</option></select><p id="catalog-status" class="hint" role="status">Loading size D catalog…</p><div id="color-results"></div><p class="hint">Swatches show retailer photos. Preview colors are sampled estimates, not manufacturer RGB values. Metallic and neon cannot be reproduced accurately on screen.</p><button id="catalog-retry" hidden>Retry catalog</button></details><details class="thread-design" open><summary>Thread colors & design</summary><div class="bands-heading"><span>Color, finish & thread name</span><span>Turns</span></div><div id="bands"></div><button id="add" class="add-band">＋ Add color band</button><div class="pattern-actions"><button id="mirror">Mirror pattern</button><button id="reverse">Reverse order</button><button id="undo" disabled>Undo</button></div><p class="hint">Drag ⠿ to reorder colors. Use “Spiral into next color” to insert a two-thread transition, then set its finished paired turns. Transition colors are independent copies of their neighbors.</p></details></aside>
+</div>
+<section class="saved-designs" aria-labelledby="saved-title"><h2 id="saved-title">Saved designs</h2><p class="hint">Saved locally in this browser. Export JSON for a backup.</p><div class="saved-controls"><select id="saved-designs" aria-label="Saved designs"><option value="">Choose a saved design…</option></select><button id="open-saved" disabled>Open</button><button id="delete-saved" disabled>Delete</button></div><p id="library-status" class="hint" role="status"></p></section>
+<section class="presets"><div><h2>A starting point</h2><p>Try a palette, then make it yours.</p></div><div id="presets"></div></section>
+<details class="recipe" open><summary>Wrapping recipe</summary><div class="panel-heading"><p>Your turn-by-turn reference for the bench. Spiral counts are finished paired revolutions.</p><button id="print">Print recipe</button></div><p class="spiral-help">Paired transitions follow <a href="https://mudhole.com/blogs/tips-tricks/alternative-fade-wraps" target="_blank" rel="noopener noreferrer">Mud Hole’s alternative fade technique</a>: wrap both threads side by side, then terminate the outgoing color. Allow one extra setup pair; final coverage depends on tying off and burnishing. Spirals are subtle at actual size—use Inspect 4× and Flat layout to inspect them.</p><div class="table-scroll"><table><thead><tr><th>Band</th><th>Thread color</th><th>Turns</th><th>Width</th><th>Position</th></tr></thead><tbody id="recipe"></tbody></table></div></details>
+<footer><span>Built for a little more time at the water.</span><span id="storage-status">Design stays in this browser</span></footer>
+</main><div id="toast" role="status"></div><input id="file" type="file" accept="application/json,.json" hidden><script src="geometry.js"></script><script src="app.js"></script><script src="catalog.js"></script>
+</body></html>
