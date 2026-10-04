@@ -13,7 +13,7 @@ const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS)
 
 test('built-in library keeps Durado no line as default and removes Durado',()=>{
  assert.deepEqual(designs.map(d=>d.name),['Durado no line','Aqua Shade','CalStar Grapfighter','Zarape']);
- assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,75]);
+ assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,82]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
 });
 
@@ -32,20 +32,49 @@ test('Zarape uses only Fuji and ProWrap catalog threads and stays within the ban
  }
  assert.equal(design.bands[0].sku,'RNS-D-361');
  assert.equal(design.bands.at(-1).sku,'RNS-D-434');
- assert.equal(design.bands.filter(b=>b.sku==='RNS-D-361'&&b.turns===50).length,2);
+ const panels=design.bands.filter((b,i)=>b.sku==='RNS-D-361'&&design.bands[i-1]?.sku==='RNS-D-552');
+ assert.equal(panels.length,2);
+ assert.equal(panels[0].turns,panels[1].turns);
+ for(const panel of panels){
+  const i=design.bands.indexOf(panel);
+  assert.deepEqual(design.bands.slice(i-2,i+3).map(b=>b.sku),[
+   'NPD00-002','RNS-D-552','RNS-D-361','RNS-D-552','NPD00-002'
+  ]);
+  assert.ok(panel.turns>=15*design.bands[i-1].turns);
+ }
 });
 
-test('Zarape has seven tapered paired-thread fades without changing its trim bands',()=>{
+test('Zarape combines adjacent identical solids without altering total turns',()=>{
+ const design=designs.find(d=>d.name==='Zarape');
+ for(let i=1;i<design.bands.length;i++){
+  const previous=design.bands[i-1],band=design.bands[i];
+  if(!previous.wrap&&!band.wrap)assert.notEqual(previous.sku,band.sku);
+ }
+ const dark=design.bands[1];
+ assert.equal(dark.sku,'RNS-D-862');
+ assert.equal(dark.turns,28);
+ assert.equal(wrapSummary(design.bands,design.coverage,design.diameter).length,250);
+});
+
+test('Zarape has seven balanced fades with short paired-thread transitions',()=>{
  const design=designs.find(d=>d.name==='Zarape');
  const spirals=design.bands.filter(b=>b.wrap==='spiral');
- assert.equal(spirals.length,21);
- for(let i=0;i<spirals.length;i+=3){
-  const [entry,center,exit]=spirals.slice(i,i+3);
-  assert.ok(center.turns>entry.turns);
-  assert.ok(center.turns>exit.turns);
-  assert.equal(entry.sku,center.sku);
-  assert.equal(exit.secondary.sku,center.secondary.sku);
-  assert.notEqual(center.sku,center.secondary.sku);
+ assert.equal(spirals.length,28);
+ for(let i=0;i<spirals.length;i+=4){
+  const [entry,centerIn,centerOut,exit]=spirals.slice(i,i+4);
+  assert.ok(centerIn.turns>entry.turns);
+  assert.ok(centerOut.turns>exit.turns);
+  assert.ok(Math.abs(entry.turns-exit.turns)<=1);
+  assert.ok(Math.abs(centerIn.turns-centerOut.turns)<=1);
+  for(const band of [entry,centerIn,centerOut,exit]){
+   assert.equal(band.sku,entry.sku);
+   assert.equal(band.secondary.sku,entry.secondary.sku);
+   assert.notEqual(band.sku,band.secondary.sku);
+  }
+  const start=design.bands.indexOf(entry)-1;
+  const fade=design.bands.slice(start,start+10);
+  assert.ok(fade[0].turns>fade[2].turns&&fade[2].turns>fade[4].turns);
+  assert.ok(fade[5].turns<fade[7].turns&&fade[7].turns<fade[9].turns);
  }
  assert.equal(wrapSummary(design.bands,design.coverage,design.diameter).length,250);
 });

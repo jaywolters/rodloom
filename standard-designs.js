@@ -24,14 +24,15 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
  const yellow=nylon('122 Neon Yellow','#e9fa20','neon','122','34440556183685');
  const dark=nylon('862 Twilight Black','#16151a','regular','862','34440558674053');
  const solid=(t,turns)=>({...t,turns});
- // Keep each fade 20 thread-widths long, with a paired center and tapered solids.
- // Outgoing-only turns shrink toward the center; incoming-only turns grow away.
+ // Symmetric 26-thread-width fades: gradually trade solid turns for paired
+ // turns, then back again. Avoid a long, visibly striped 50/50 plateau.
  const fade=(from,to)=>[
-  solid(from,2),spiral(from,to,1,undefined,1),
-  solid(from,1),spiral(from,to,1,undefined,5),solid(to,1),
-  spiral(from,to,1,undefined,1),solid(to,2)
+  solid(from,4),spiral(from,to,1,undefined,1),
+  solid(from,2),spiral(from,to,1,undefined,2),solid(from,1),
+  solid(to,1),spiral(from,to,1,undefined,2),solid(to,2),
+  spiral(from,to,1,undefined,1),solid(to,4)
  ];
- const pinkTrim=()=>[solid(white,1),solid(green,1),solid(pink,12),solid(green,1),solid(white,1)];
+ const pinkTrim=()=>[solid(white,1),solid(green,1),solid(pink,18),solid(green,1),solid(white,1)];
  // Resize by axial thread-widths: paired spiral turns cover twice a solid turn.
  const toLength=(design,length)=>{
   const target=Math.round(length/design.coverage);
@@ -47,6 +48,20 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
    if(!remainder)break;
   }
   return {...design,bands:design.bands.map((b,index)=>({...b,turns:scaled[index].turns}))};
+ };
+ // Consolidate only identical solid threads; paired wraps stay separate.
+ const combineSolids=design=>{
+  const bands=[];
+  for(const band of design.bands){
+   const previous=bands.at(-1);
+   const {turns,...thread}=band;
+   const {turns:previousTurns,...previousThread}=previous||{};
+   if(previous&&!previous.wrap&&!band.wrap&&
+      JSON.stringify(thread)===JSON.stringify(previousThread)&&previousTurns+turns<=1000){
+    previous.turns+=turns;
+   }else bands.push({...band});
+  }
+  return {...design,bands};
  };
  const spiral=(first,second,direction,secondaryTurns,turns=8)=>({...first,turns,wrap:'spiral',direction,secondary:{...second,...(secondaryTurns?{turns:secondaryTurns}:{})}});
  return [{version:1,name:'Durado no line',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
@@ -66,13 +81,13 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   spiral(white,teal,-1,undefined,4),solid(teal,10),
   spiral(teal,black,-1,undefined,4),solid(black,10)
  ]},
- toLength({version:1,name:'Zarape',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
+ combineSolids(toLength({version:1,name:'Zarape',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
   // Read the reference image top to bottom as left-to-right wrapping order.
-  solid(pink,1),solid(dark,3),...fade(dark,cyan),solid(cyan,8),
-  solid(white,1),solid(yellow,2),solid(green,6),...fade(green,dark),solid(dark,3),
-  ...pinkTrim(),solid(dark,4),...fade(dark,pink),solid(pink,6),
-  ...fade(pink,bubblegum),solid(bubblegum,3),solid(yellow,1),solid(orange,8),
-  ...fade(orange,red),solid(red,6),...fade(red,dark),solid(dark,3),
-  ...pinkTrim(),solid(dark,3),...fade(dark,cyan),solid(cyan,10)
- ]},250)];
+  solid(pink,1),solid(dark,4),...fade(dark,cyan),solid(cyan,7),
+  solid(white,1),solid(yellow,3),solid(green,5),...fade(green,dark),solid(dark,5),
+  ...pinkTrim(),solid(dark,5),...fade(dark,pink),solid(pink,3),
+  ...fade(pink,bubblegum),solid(bubblegum,2),solid(yellow,1),solid(orange,6),
+  ...fade(orange,red),solid(red,3),...fade(red,dark),solid(dark,4),
+  ...pinkTrim(),solid(dark,5),...fade(dark,cyan),solid(cyan,9)
+ ]},250))];
 })();
