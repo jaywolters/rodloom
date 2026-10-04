@@ -1,5 +1,6 @@
 // Catalog names/codes come from the retailer. Photo sampling is visual approximation only.
 (() => {
+ const apiBase=(window.RODLOOM_API_BASE||'').replace(/\/$/,'');
  let items=[], warnings=[], loaded=false;
  const sampled=new Map();
  function approximateColor(image) {
@@ -42,7 +43,8 @@
     catch{button.disabled=false;button.title+=' — photo sampling unavailable; select preview color after adding';}
    };
    image.onerror=()=>{image.alt='Photo unavailable';button.disabled=false;button.title+=' — select preview color after adding';};
-   image.src=`/api/swatch?id=${encodeURIComponent(item.id)}`;
+   image.crossOrigin='anonymous';
+   image.src=`${apiBase}/api/swatch?id=${encodeURIComponent(item.id)}`;
    const name=make('strong','',item.name), detail=make('small','',`${item.line} · D`);
    const availability=make('small','stock-note',item.available?'':'Listed out of stock');
    button.append(image,chip,name,detail,availability);
@@ -61,12 +63,12 @@
   $('catalog-status').textContent='Loading size D catalog…';$('catalog-retry').hidden=true;
   $('color-results').replaceChildren();
   try{
-   const response=await fetch('/api/catalog');if(!response.ok)throw Error('Catalog unavailable');
+   const response=await fetch(`${apiBase}/api/catalog`);if(!response.ok)throw Error('Catalog unavailable');
    const data=await response.json();if(!Array.isArray(data.items)||!data.items.length)throw Error('No catalog entries');
    items=data.items;warnings=data.warnings||[];loaded=true;updateLines();renderCatalog();
    if(warnings.length)$('catalog-retry').hidden=false;
   }catch{
-   loaded=false;$('catalog-status').textContent='Catalog unavailable. Start python server.py and retry. You can still add custom color bands.';$('catalog-retry').hidden=false;
+   loaded=false;$('catalog-status').textContent='Catalog unavailable. Retry shortly; for local use, start python server.py. You can still add custom color bands.';$('catalog-retry').hidden=false;
   }
  }
  $('thread-brand').onchange=()=>{updateLines();renderCatalog();};$('thread-line').onchange=renderCatalog;

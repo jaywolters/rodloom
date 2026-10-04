@@ -2,6 +2,7 @@
 import concurrent.futures
 import hashlib
 import json
+import os
 from pathlib import Path
 import threading
 import time
@@ -10,7 +11,7 @@ import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = Path(__file__).resolve().parent
-CACHE = ROOT / '.catalog-cache'
+CACHE = Path(os.environ.get('RODLOOM_CACHE_DIR', str(ROOT / '.catalog-cache')))
 SOURCES = [
     ('ProWrap', 'ColorFast', 'regular', 'prowrap-colorfast-rod-winding-thread-size-d-100-yds'),
     ('ProWrap', 'Nylon', 'regular', 'prowrap-nylon-rod-winding-thread-size-d-100-yds'),
@@ -24,7 +25,7 @@ lock = threading.Lock()
 
 def fetch(url):
     request = urllib.request.Request(url, headers={'User-Agent': 'RodLoom-local-catalog/1.0'})
-    with urllib.request.urlopen(request, timeout=25) as response:
+    with urllib.request.urlopen(request, timeout=8) as response:
         return response.read(8_000_000)
 
 

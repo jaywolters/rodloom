@@ -1,0 +1,13 @@
+version: 1
+frontend:
+  phases:
+    build:
+      commands:
+        - node --check app.js
+        - node --check catalog.js
+        - node --test geometry.test.js
+        - node scripts/build.mjs
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'

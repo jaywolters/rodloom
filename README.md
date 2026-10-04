@@ -6,6 +6,10 @@ A local browser workbench for designing banded fishing-rod thread wraps and pair
 
 Run `python server.py` in this folder and visit http://localhost:8000. Python 3 is sufficient; no packages or build required. The integrated catalog requires this server, not `python -m http.server`. Opening `index.html` directly still supports custom designs, but not the retailer catalog.
 
+## Hosted deployment
+
+The website is hosted on AWS Amplify with a Lambda/HTTP API catalog backend. See [DEPLOY.md](DEPLOY.md) for the live URL, GitHub connection step, and deployment instructions. Local Python development remains supported.
+
 ## Features
 
 - Shaded rod and flat previews with individual turns
