@@ -14,7 +14,19 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
  const night=thread('860 Night Shade','#0d0a0b','regular','ProWrap','ColorFast','CFS-D-860','860','prowrap-colorfast-rod-winding-thread-size-d-100-yds','39338771153029');
  const teal=thread('017 Teal','#01baa6','regular','Fuji','Ultra Poly NOCP','NPD00-017','017','fuji-ultra-poly-nocp-rod-building-thread-100m-spool','34480390471813');
  const white=thread('002 White','#e2e1de','regular','Fuji','Ultra Poly NOCP','NPD00-002','002','fuji-ultra-poly-nocp-rod-building-thread-100m-spool','34480389980293');
+ const nylon=(name,color,finish,code,variant)=>thread(name,color,finish,'ProWrap','Nylon',`RNS-D-${code}`,code,'prowrap-nylon-rod-winding-thread-size-d-100-yds',variant);
+ // Photo-inspired preview colors; actual neon colors depend on thread and lighting.
+ const cyan=nylon('434 Maui Surf','#24bed1','regular','434','34440557002885');
+ const pink=nylon('361 Neon Pink','#fa0070','neon','361','34440556707973');
+ const bubblegum=nylon('301 Bubblegum','#ff86b3','regular','301','34440556380293');
+ const orange=nylon('225 Neon Orange','#ff8a16','neon','225','34440556347525');
+ const red=nylon('325 Fire Red','#bf1235','regular','325','34440556544133');
+ const yellow=nylon('122 Neon Yellow','#e9fa20','neon','122','34440556183685');
+ const dark=nylon('862 Twilight Black','#16151a','regular','862','34440558674053');
  const solid=(t,turns)=>({...t,turns});
+ // Change the ratio of alternating solid turns for a buildable stepped fade.
+ const fade=(from,to)=>[1,2,3,4].flatMap(n=>[solid(from,5-n),solid(to,n)]);
+ const pinkTrim=()=>[solid(white,1),solid(green,1),solid(pink,12),solid(green,1),solid(white,1)];
  const spiral=(first,second,direction,secondaryTurns,turns=8)=>({...first,turns,wrap:'spiral',direction,secondary:{...second,...(secondaryTurns?{turns:secondaryTurns}:{})}});
  return [{version:1,name:'Durado',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
   solid(cobalt,16),spiral(cobalt,ice,1,15),solid(ice,16),
@@ -39,5 +51,14 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   spiral(ice,aqua,1,15),solid(aqua,16),spiral(aqua,green,1,110),
   solid(green,220),spiral(green,aqua,-1),solid(aqua,16),
   spiral(aqua,ice,-1),solid(ice,16),spiral(ice,cobalt,-1),solid(cobalt,16)
+ ]},
+ {version:1,name:'Neon Sunset',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
+  // Read the reference image top to bottom as left-to-right wrapping order.
+  solid(pink,1),solid(dark,3),...fade(dark,cyan),solid(cyan,8),
+  solid(white,1),solid(yellow,2),solid(green,6),...fade(green,dark),solid(dark,3),
+  ...pinkTrim(),solid(dark,4),...fade(dark,pink),solid(pink,6),
+  ...fade(pink,bubblegum),solid(bubblegum,3),solid(yellow,1),solid(orange,8),
+  ...fade(orange,red),solid(red,6),...fade(red,dark),solid(dark,3),
+  ...pinkTrim(),solid(dark,3),...fade(dark,cyan),solid(cyan,10)
  ]}];
 })();

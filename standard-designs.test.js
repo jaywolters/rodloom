@@ -10,10 +10,26 @@ const source=fs.readFileSync('app.js','utf8');
 vm.runInContext(source.slice(source.indexOf('const isCatalogThread ='),source.indexOf('const standardDesigns='))+source.slice(source.indexOf('const validColor ='),source.indexOf("try {const saved=")),context);
 const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS));
 
-test('all four built-in designs are valid, with Durado still the initial default',()=>{
- assert.deepEqual(designs.map(d=>d.name),['Durado','Aqua Shade','CalStar Grapfighter','Durado no line']);
- assert.deepEqual(designs.map(d=>d.bands.length),[17,7,13,13]);
+test('all built-in designs are valid, with Durado still the initial default',()=>{
+ assert.deepEqual(designs.map(d=>d.name),['Durado','Aqua Shade','CalStar Grapfighter','Durado no line','Neon Sunset']);
+ assert.deepEqual(designs.map(d=>d.bands.length),[17,7,13,13,82]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
+});
+
+test('Neon Sunset uses only Fuji and ProWrap catalog threads and stays within the band limit',()=>{
+ const design=designs.find(d=>d.name==='Neon Sunset');
+ assert.equal(design.texture,true);
+ assert.ok(design.bands.length<=100);
+ assert.equal(design.bands.reduce((sum,b)=>sum+b.turns,0),240);
+ for(const band of design.bands){
+  assert.ok(['Fuji','ProWrap'].includes(band.brand));
+  assert.equal(band.catalog,true);
+  assert.ok(band.sku);
+  assert.match(band.source,/^https:\/\/mudhole\.com\/products\//);
+ }
+ assert.equal(design.bands[0].sku,'RNS-D-361');
+ assert.equal(design.bands.at(-1).sku,'RNS-D-434');
+ assert.equal(design.bands.filter(b=>b.sku==='RNS-D-361'&&b.turns===12).length,2);
 });
 
 test('new patterns preserve texture, center turns, and spiral directions',()=>{
