@@ -83,7 +83,9 @@ function render(){
  $('preview-name').textContent=state.name||'Untitled design';$('band-count').textContent=`${state.bands.length} bands`;$('undo').disabled=!history.length;
  const list=$('bands');list.replaceChildren();
  if(!state.bands.length)list.append(make('p','hint','Choose Fuji or ProWrap thread colors from the catalog to start your design.'));
- state.bands.forEach((b,i)=>{
+ // Display rightmost/latest bands first; keep stored bands in wrap order.
+ state.bands.slice().reverse().forEach((b,position)=>{
+  const i=state.bands.length-1-position;
   const row=make('div','band');row.dataset.index=i;
   const handle=make('button','drag-handle','⠿');handle.type='button';handle.title=`Drag to reorder band ${i+1}; or use the up/down arrows`;handle.setAttribute('aria-label',handle.title);
   handle.addEventListener('pointerdown',event=>startBandDrag(event,i,handle));row.append(handle);
@@ -91,7 +93,7 @@ function render(){
   const details=make('div','band-details');const name=make('input','name');name.value=b.name;name.maxLength=80;name.setAttribute('aria-label',`Band ${i+1} thread name`);name.readOnly=true;
   details.append(name);if(b.brand){const brand=make('small','brand-note',b.catalog?`${b.brand} · ${b.line || ''} · ${b.sku || ''}`:`${b.brand} · match unverified`);details.append(brand);}
   const turns=make('input','turns');turns.type='number';turns.min=1;turns.max=1000;turns.step=1;turns.value=b.turns;turns.setAttribute('aria-label',`Band ${i+1} turns`);turns.addEventListener('change',()=>{if(!turns.checkValidity()||!turns.value){turns.reportValidity();turns.value=b.turns;return;}change(()=>b.turns=Number(turns.value));});
-  const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',i===0,()=>[state.bands[i-1],state.bands[i]]=[state.bands[i],state.bands[i-1]]],['Move down','↓',i===state.bands.length-1,()=>[state.bands[i+1],state.bands[i]]=[state.bands[i],state.bands[i+1]]],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>change(fn);tools.append(btn);}
+  const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',i===state.bands.length-1,()=>[state.bands[i+1],state.bands[i]]=[state.bands[i],state.bands[i+1]]],['Move down','↓',i===0,()=>[state.bands[i-1],state.bands[i]]=[state.bands[i],state.bands[i-1]]],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>change(fn);tools.append(btn);}
   row.append(color,details,turns,tools);
   if(b.wrap==='spiral'){
    row.classList.add('spiral-band');
@@ -129,7 +131,8 @@ function startBandDrag(event,index,handle){
   const rows=[...list.children];
   const remaining=rows.filter(el=>el!==row);
   const insertion=remaining.findIndex(el=>{const r=el.getBoundingClientRect();return e.clientY<r.top+r.height/2;});
-  destination=insertion<0?remaining.length:insertion;
+  const position=insertion<0?remaining.length:insertion;
+  destination=remaining.length-position;
   if(destination!==index){
    if(insertion<0)remaining.at(-1)?.classList.add('drop-after');
    else remaining[insertion].classList.add('drop-before');
@@ -144,7 +147,7 @@ function startBandDrag(event,index,handle){
   clearTargets();row.classList.remove('dragging');
   if(e.type==='pointerup'&&destination!==index){
    change(()=>{const [moved]=state.bands.splice(index,1);state.bands.splice(destination,0,moved);});
-   $('bands').children[destination].querySelector('.drag-handle').focus();
+   $('bands').children[state.bands.length-1-destination].querySelector('.drag-handle').focus();
    notify(`Band moved to position ${destination+1}`);
   }
  }
@@ -244,7 +247,7 @@ function addBand(b){
  if(state.bands.length>=100){notify('Maximum 100 bands per design.');return;}
  change(()=>state.bands.push(structuredClone(b)));
  $('bands').closest('details').open=true;
- $('bands').lastElementChild.scrollIntoView({block:'end',inline:'nearest'});
+ $('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
 }
 $('mirror').onclick=()=>{if(state.bands.length*2>100){notify('Mirroring would exceed 100 bands.');return;}change(()=>state.bands.push(...state.bands.map(reflectedBand).reverse()));notify('Added a reversed copy of every band.');};
 $('reverse').onclick=()=>change(()=>state.bands=state.bands.map(reflectedBand).reverse());$('undo').onclick=()=>{if(history.length){state=history.pop();render();}};
@@ -256,7 +259,7 @@ function renderStartingPoints(){
  const list=$('presets');list.replaceChildren();
  let saved=[];
  try{saved=readLibrary();}catch{list.append(make('p','hint','Saved designs unavailable. Export your current design for a backup.'));}
- for(const [custom,designs] of [[false,standardDesigns],[true,saved]])for(const preset of designs){
+ for(const [custom,designs] of [[true,saved],[false,standardDesigns]])for(const preset of designs){
   const btn=make('button','preset'),strip=make('span','preset-strip');
   preset.bands.forEach(b=>{const s=make('span');s.style.background=b.color;s.style.flex=b.turns;strip.append(s);});
   btn.append(strip,make('span','preset-name',preset.name),make('small','',custom?'Saved in this browser':'Standard design'));
