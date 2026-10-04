@@ -10,9 +10,9 @@ const source=fs.readFileSync('app.js','utf8');
 vm.runInContext(source.slice(source.indexOf('const isCatalogThread ='),source.indexOf('const standardDesigns='))+source.slice(source.indexOf('const validColor ='),source.indexOf("try {const saved=")),context);
 const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS));
 
-test('all built-in designs are valid, with Durado still the initial default',()=>{
- assert.deepEqual(designs.map(d=>d.name),['Durado','Aqua Shade','CalStar Grapfighter','Durado no line','Zarape']);
- assert.deepEqual(designs.map(d=>d.bands.length),[17,7,13,13,82]);
+test('built-in library keeps Durado no line as default and removes Durado',()=>{
+ assert.deepEqual(designs.map(d=>d.name),['Durado no line','Aqua Shade','CalStar Grapfighter','Zarape']);
+ assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,82]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
 });
 
@@ -33,7 +33,7 @@ test('Zarape uses only Fuji and ProWrap catalog threads and stays within the ban
 });
 
 test('new patterns preserve texture, center turns, and spiral directions',()=>{
- const [,aqua,calstar,durado]=designs;
+ const [durado,aqua,calstar]=designs;
  assert.equal(aqua.texture,true);
  assert.equal(calstar.texture,true);
  assert.equal(durado.texture,false);

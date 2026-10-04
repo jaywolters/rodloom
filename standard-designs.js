@@ -28,11 +28,10 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
  const fade=(from,to)=>[1,2,3,4].flatMap(n=>[solid(from,5-n),solid(to,n)]);
  const pinkTrim=()=>[solid(white,1),solid(green,1),solid(pink,12),solid(green,1),solid(white,1)];
  const spiral=(first,second,direction,secondaryTurns,turns=8)=>({...first,turns,wrap:'spiral',direction,secondary:{...second,...(secondaryTurns?{turns:secondaryTurns}:{})}});
- return [{version:1,name:'Durado',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
+ return [{version:1,name:'Durado no line',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
   solid(cobalt,16),spiral(cobalt,ice,1,15),solid(ice,16),
   spiral(ice,aqua,1,15),solid(aqua,16),spiral(aqua,green,1,110),
-  solid(green,110),solid(silver,4),solid(black,3),solid(silver,4),
-  solid(green,110),spiral(green,aqua,-1),solid(aqua,16),
+  solid(green,220),spiral(green,aqua,-1),solid(aqua,16),
   spiral(aqua,ice,-1),solid(ice,16),spiral(ice,cobalt,-1),solid(cobalt,16)
  ]},
  {version:1,name:'Aqua Shade',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
@@ -45,12 +44,6 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   spiral(black,teal,1,1,3),solid(black,150),solid(white,10),
   spiral(white,teal,-1,undefined,4),solid(teal,10),
   spiral(teal,black,-1,undefined,4),solid(black,10)
- ]},
- {version:1,name:'Durado no line',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
-  solid(cobalt,16),spiral(cobalt,ice,1,15),solid(ice,16),
-  spiral(ice,aqua,1,15),solid(aqua,16),spiral(aqua,green,1,110),
-  solid(green,220),spiral(green,aqua,-1),solid(aqua,16),
-  spiral(aqua,ice,-1),solid(ice,16),spiral(ice,cobalt,-1),solid(cobalt,16)
  ]},
  {version:1,name:'Zarape',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
   // Read the reference image top to bottom as left-to-right wrapping order.
