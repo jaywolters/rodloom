@@ -3,6 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
+const {wrapSummary}=require('./geometry.js');
 
 const context=vm.createContext({window:{}});
 vm.runInContext(fs.readFileSync('standard-designs.js','utf8'),context);
@@ -20,7 +21,9 @@ test('Zarape uses only Fuji and ProWrap catalog threads and stays within the ban
  const design=designs.find(d=>d.name==='Zarape');
  assert.equal(design.texture,true);
  assert.ok(design.bands.length<=100);
- assert.equal(design.bands.reduce((sum,b)=>sum+b.turns,0),240);
+ assert.equal(design.bands.reduce((sum,b)=>sum+b.turns,0),1000);
+ assert.equal(wrapSummary(design.bands,design.coverage,design.diameter).length,250);
+ assert.equal(design.coverage,0.25);
  for(const band of design.bands){
   assert.ok(['Fuji','ProWrap'].includes(band.brand));
   assert.equal(band.catalog,true);
@@ -29,7 +32,7 @@ test('Zarape uses only Fuji and ProWrap catalog threads and stays within the ban
  }
  assert.equal(design.bands[0].sku,'RNS-D-361');
  assert.equal(design.bands.at(-1).sku,'RNS-D-434');
- assert.equal(design.bands.filter(b=>b.sku==='RNS-D-361'&&b.turns===12).length,2);
+ assert.equal(design.bands.filter(b=>b.sku==='RNS-D-361'&&b.turns===50).length,2);
 });
 
 test('new patterns preserve texture, center turns, and spiral directions',()=>{

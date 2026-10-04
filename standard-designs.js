@@ -27,6 +27,18 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
  // Change the ratio of alternating solid turns for a buildable stepped fade.
  const fade=(from,to)=>[1,2,3,4].flatMap(n=>[solid(from,5-n),solid(to,n)]);
  const pinkTrim=()=>[solid(white,1),solid(green,1),solid(pink,12),solid(green,1),solid(white,1)];
+ // Proportionally resize solid patterns, distributing rounding to hit the exact length.
+ const toLength=(design,length)=>{
+  const target=Math.round(length/design.coverage);
+  const total=design.bands.reduce((sum,b)=>sum+b.turns,0);
+  const scaled=design.bands.map((b,index)=>{
+   const turns=b.turns*target/total;
+   return {index,turns:Math.floor(turns),fraction:turns-Math.floor(turns)};
+  });
+  const remainder=target-scaled.reduce((sum,b)=>sum+b.turns,0);
+  scaled.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index).slice(0,remainder).forEach(b=>b.turns++);
+  return {...design,bands:design.bands.map((b,index)=>({...b,turns:scaled[index].turns}))};
+ };
  const spiral=(first,second,direction,secondaryTurns,turns=8)=>({...first,turns,wrap:'spiral',direction,secondary:{...second,...(secondaryTurns?{turns:secondaryTurns}:{})}});
  return [{version:1,name:'Durado no line',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
   solid(cobalt,16),spiral(cobalt,ice,1,15),solid(ice,16),
@@ -45,7 +57,7 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   spiral(white,teal,-1,undefined,4),solid(teal,10),
   spiral(teal,black,-1,undefined,4),solid(black,10)
  ]},
- {version:1,name:'Zarape',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
+ toLength({version:1,name:'Zarape',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
   // Read the reference image top to bottom as left-to-right wrapping order.
   solid(pink,1),solid(dark,3),...fade(dark,cyan),solid(cyan,8),
   solid(white,1),solid(yellow,2),solid(green,6),...fade(green,dark),solid(dark,3),
@@ -53,5 +65,5 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   ...fade(pink,bubblegum),solid(bubblegum,3),solid(yellow,1),solid(orange,8),
   ...fade(orange,red),solid(red,6),...fade(red,dark),solid(dark,3),
   ...pinkTrim(),solid(dark,3),...fade(dark,cyan),solid(cyan,10)
- ]}];
+ ]},250)];
 })();
