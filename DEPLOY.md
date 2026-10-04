@@ -10,7 +10,7 @@
 - Execution role: `rodloom-catalog-execution`, scoped to writing the function's logs only
 - API throttle: 10 requests/second, burst 20; logs retained for 14 days
 
-The public API serves only GET catalog/swatch requests. No caller-provided URL is fetched. CORS allows public, non-credentialed requests, including cross-origin image sampling. Cached files live in Lambda's temporary storage and may disappear at any time. Cold instances refetch the fixed retailer catalogs. The 8-second upstream timeout bounds latency. Review the retailer's terms/permission before broad redistribution. Hosting, API, Lambda, and logging can incur charges; throttling is not a hard spending cap.
+The frontend now serves the catalog and all swatches from bundled `assets/` on the website's own origin. There are no remote image requests or API fallbacks. The build copies and validates these assets without downloading anything. Refresh them explicitly with `python scripts/localize_catalog.py` and commit the results before deploying. The existing API below is legacy and is no longer used by the frontend. The public API serves only GET catalog/swatch requests. No caller-provided URL is fetched. CORS allows public, non-credentialed requests, including cross-origin image sampling. Cached files live in Lambda's temporary storage and may disappear at any time. Cold instances refetch the fixed retailer catalogs. The 8-second upstream timeout bounds latency. Review the retailer's terms/permission before broad redistribution. Hosting, API, Lambda, and logging can incur charges; throttling is not a hard spending cap.
 
 ## Connect GitHub for frontend auto-deploys
 
@@ -22,6 +22,17 @@ The initial deployment was uploaded directly, without obtaining or storing a Git
 4. Enable automatic builds and verify a GitHub-triggered build completes successfully.
 
 Amplify builds `dist/` with an explicit frontend file allowlist; Python, deployment scripts, and Git history are not published. `config.js` is generated with the public API URL; this URL is not a secret. Backend updates are **not** automatically deployed by Amplify.
+
+## Deploy the bundled frontend only
+
+For catalog/image or other frontend changes, leave the legacy backend unchanged:
+
+```sh
+node --test
+python scripts/deploy.py --frontend-only --execute --confirm-account 355609608739
+```
+
+This validates the local swatches, builds `dist/`, recursively packages all assets, and publishes to the existing Amplify `main` branch. It does not change app settings or backend resources.
 
 ## Deploy/redeploy both backend and frontend manually
 

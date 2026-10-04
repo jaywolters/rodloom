@@ -28,14 +28,47 @@ def aws(service, operation, payload=None, extra=()):
     return json.loads(result.stdout) if result.stdout.strip() else {}
 
 
+def deploy_frontend(app):
+    """Publish the static build without modifying the legacy backend or app settings."""
+    app_id = app['appId']
+    subprocess.run(['node', 'scripts/build.mjs'], cwd=ROOT, check=True)
+    with tempfile.TemporaryDirectory() as temp:
+        frontend = Path(temp) / 'frontend.zip'
+        with zipfile.ZipFile(frontend, 'w', zipfile.ZIP_DEFLATED) as z:
+            for file in (ROOT / 'dist').rglob('*'):
+                if file.is_file():
+                    z.write(file, file.relative_to(ROOT / 'dist').as_posix())
+        deployment = aws('amplify', 'create-deployment', {'appId': app_id, 'branchName': 'main'})
+        request = urllib.request.Request(deployment['zipUploadUrl'], data=frontend.read_bytes(), method='PUT')
+        with urllib.request.urlopen(request, timeout=60) as response:
+            response.read()
+        aws('amplify', 'start-deployment', {'appId': app_id, 'branchName': 'main', 'jobId': deployment['jobId']})
+        for _ in range(60):
+            job = aws('amplify', 'get-job', {'appId': app_id, 'branchName': 'main', 'jobId': deployment['jobId']})
+            status = job['job']['summary']['status']
+            if status == 'SUCCEED':
+                print(json.dumps({'appId': app_id, 'jobId': deployment['jobId'],
+                                  'website': 'https://main.' + app['defaultDomain']}, indent=2))
+                return
+            if status in ('FAILED', 'CANCELLED'):
+                raise RuntimeError('Amplify deployment ' + status)
+            time.sleep(5)
+        raise RuntimeError('Deployment still running; inspect Amplify console.')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--frontend-only', action='store_true', help='Deploy static assets to the existing Amplify app only')
     parser.add_argument('--confirm-account', required=True)
     args = parser.parse_args()
     account = aws('sts', 'get-caller-identity')['Account']
     if not args.execute or account != args.confirm_account:
         raise SystemExit('Explicit execution and matching AWS account are required.')
+    if args.frontend_only:
+        app = aws('amplify', 'get-app', {'appId': 'dnpxbg1xuqcc'})['app']
+        deploy_frontend(app)
+        return
     name = 'rodloom-catalog'
     function_arn = f'arn:aws:lambda:{REGION}:{account}:function:{name}'
     log_group = '/aws/lambda/' + name
@@ -121,8 +154,9 @@ def main():
                        env={**os.environ, 'RODLOOM_API_BASE': endpoint}, check=True)
         frontend = Path(temp) / 'frontend.zip'
         with zipfile.ZipFile(frontend, 'w', zipfile.ZIP_DEFLATED) as z:
-            for file in (ROOT / 'dist').iterdir():
-                z.write(file, file.name)
+            for file in (ROOT / 'dist').rglob('*'):
+                if file.is_file():
+                    z.write(file, file.relative_to(ROOT / 'dist').as_posix())
         deployment = aws('amplify', 'create-deployment', {'appId': app_id, 'branchName': 'main'})
         request = urllib.request.Request(deployment['zipUploadUrl'], data=frontend.read_bytes(), method='PUT')
         with urllib.request.urlopen(request, timeout=60) as response:

@@ -4,11 +4,11 @@ A local browser workbench for designing banded fishing-rod thread wraps and pair
 
 ## Open
 
-Run `python server.py` in this folder and visit http://localhost:8000. Python 3 is sufficient; no packages or build required. The integrated catalog requires this server, not `python -m http.server`. Opening `index.html` directly still supports custom designs, but not the retailer catalog.
+Run `python server.py` in this folder and visit http://localhost:8000. Python 3 is sufficient; no packages or build required. The catalog and all swatch images are bundled locally, so `python -m http.server` also works. Opening `index.html` directly still supports custom designs, but not the retailer catalog.
 
 ## Hosted deployment
 
-The website is hosted on AWS Amplify with a Lambda/HTTP API catalog backend. See [DEPLOY.md](DEPLOY.md) for the live URL, GitHub connection step, and deployment instructions. Local Python development remains supported.
+The website is hosted on AWS Amplify. The catalog and swatches are static bundled assets; the legacy Lambda/HTTP API is no longer used by the frontend. See [DEPLOY.md](DEPLOY.md) for the live URL, GitHub connection step, and deployment instructions. Local Python development remains supported.
 
 ## Features
 
@@ -28,7 +28,7 @@ The website is hosted on AWS Amplify with a Lambda/HTTP API catalog backend. See
 
 Catalog names, codes, SKUs, size D variants, photos, and stock flags come from Mud Hole's public Shopify product JSON, not a manufacturer API. Preview RGB colors are automatically approximated from product photos and may sample spool/label/shadow colors incorrectly; edit the swatch as needed and consult physical charts. Metallic reflections and neon saturation are illustrative. Finish, color preserver, the blank, and lighting affect actual results. Older saved planning bands remain marked unverified.
 
-The Python server retrieves only six fixed product catalogs (ProWrap ColorFast/Nylon/Metallic and Fuji Ultra Poly/NOCP/Metallic), caching responses for 24 hours in `.catalog-cache/`. Thumbnails are proxied from the catalog's Shopify CDN links and cached on demand. Stale catalogs are retained when the source is unavailable; the UI flags degraded results. Stock is not real-time. Upstream endpoints can change without notice. Review retailer terms and obtain permission as needed before publishing or broadly redistributing catalog content. The local server binds to loopback only.
+The catalog snapshot lives in `assets/catalog.json`; all 120-pixel swatches are stored in `assets/swatches/` and included in the frontend build. Page views and normal builds make no retailer image or catalog requests and have no remote image fallback. Stock reflects the snapshot, not real-time availability. To explicitly refresh the six fixed product catalogs (ProWrap ColorFast/Nylon/Metallic and Fuji Ultra Poly/NOCP/Metallic) and download their photos, run `python scripts/localize_catalog.py`, review and commit the updated assets, then rebuild/redeploy. The maintenance script reuses `.catalog-cache/` when possible and leaves the previous manifest intact if an image download fails. Review retailer terms and obtain permission as needed before publishing or broadly redistributing catalog content. The local server binds to loopback only.
 
 The initial size D coverage of 0.25 mm/turn is an editable estimate, not a universal specification. Measure the width of a test wrap and divide by its turn count. Metallic threads may pack differently; this version uses one coverage value for the whole design.
 

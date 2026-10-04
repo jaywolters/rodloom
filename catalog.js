@@ -1,8 +1,11 @@
 // Catalog names/codes come from the retailer. Photo sampling is visual approximation only.
 (() => {
- const apiBase=(window.RODLOOM_API_BASE||'').replace(/\/$/,'');
  let items=[], warnings=[], loaded=false;
  const sampled=new Map();
+ function thumbnailUrl(item){
+  // Only bundled, content-addressed images are allowed. No remote/API fallback.
+  return /^assets\/swatches\/[a-f0-9]{64}\.(png|jpg|webp|gif)$/.test(item.image)?item.image:'';
+ }
  function approximateColor(image) {
   const canvas=document.createElement('canvas');canvas.width=canvas.height=48;
   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0,48,48);
@@ -34,17 +37,21 @@
   $('catalog-status').title=warnings.join('; ');
   for(const item of matches){
    const card=make('div','catalog-card');
-   const button=make('button','catalog-choice');button.title=`Add ${item.brand} ${item.name}, ${item.line}, size D`;button.disabled=true;
-   const image=make('img','catalog-photo');image.alt=`${item.name} thread swatch`;image.loading='lazy';image.width=100;image.height=86;
-   const chip=make('span','sample-chip');chip.title='Approximate photo-sampled preview color';
+   const button=make('button','catalog-choice');button.title=`Add ${item.brand} ${item.name}, ${item.line}, size D`;
+   const image=make('img','catalog-photo');image.alt=`${item.name} thread swatch`;image.loading='lazy';image.decoding='async';image.width=100;image.height=86;
+   const chip=make('span','sample-chip');chip.title='Approximate photo-sampled preview color';chip.style.background='#808080';
    if(sampled.has(item.id)){chip.style.background=sampled.get(item.id);button.disabled=false;}
    image.onload=()=>{
     try{const color=sampled.get(item.id)||approximateColor(image);sampled.set(item.id,color);chip.style.background=color;button.disabled=false;}
     catch{button.disabled=false;button.title+=' — photo sampling unavailable; neutral preview placeholder';}
    };
-   image.onerror=()=>{image.alt='Photo unavailable';button.disabled=false;button.title+=' — neutral preview placeholder';};
-   image.crossOrigin='anonymous';
-   image.src=`${apiBase}/api/swatch?id=${encodeURIComponent(item.id)}`;
+   image.onerror=()=>{
+    image.alt='Photo unavailable';image.hidden=true;
+    button.title+=' — photo unavailable; neutral preview placeholder';
+   };
+   const thumbnail=thumbnailUrl(item);
+   if(thumbnail)image.src=thumbnail;
+   else image.onerror();
    const name=make('strong','',item.name), detail=make('small','',`${item.line} · D`);
    const availability=make('small','stock-note',item.available?'':'Listed out of stock');
    button.append(image,chip,name,detail,availability);
@@ -63,12 +70,12 @@
   $('catalog-status').textContent='Loading size D catalog…';$('catalog-retry').hidden=true;
   $('color-results').replaceChildren();
   try{
-   const response=await fetch(`${apiBase}/api/catalog`);if(!response.ok)throw Error('Catalog unavailable');
+   const response=await fetch('assets/catalog.json');if(!response.ok)throw Error('Catalog unavailable');
    const data=await response.json();if(!Array.isArray(data.items)||!data.items.length)throw Error('No catalog entries');
    items=data.items;warnings=data.warnings||[];loaded=true;updateLines();renderCatalog();
    if(warnings.length)$('catalog-retry').hidden=false;
   }catch{
-   loaded=false;$('catalog-status').textContent='Catalog unavailable. Retry shortly; for local use, start python server.py. Fuji and ProWrap catalog threads are required to add colors.';$('catalog-retry').hidden=false;
+   loaded=false;$('catalog-status').textContent='Bundled catalog unavailable. Retry or check that assets/catalog.json was included in the website deployment.';$('catalog-retry').hidden=false;
   }
  }
  $('thread-brand').onchange=()=>{updateLines();renderCatalog();};$('thread-line').onchange=renderCatalog;
