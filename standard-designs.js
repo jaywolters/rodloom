@@ -52,7 +52,7 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   solid(green,220),spiral(green,aqua,-1),solid(aqua,16),
   spiral(aqua,ice,-1),solid(ice,16),spiral(ice,cobalt,-1),solid(cobalt,16)
  ]},
- {version:1,name:'Neon Sunset',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
+ {version:1,name:'Zarape',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
   // Read the reference image top to bottom as left-to-right wrapping order.
   solid(pink,1),solid(dark,3),...fade(dark,cyan),solid(cyan,8),
   solid(white,1),solid(yellow,2),solid(green,6),...fade(green,dark),solid(dark,3),

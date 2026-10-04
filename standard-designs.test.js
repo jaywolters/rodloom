@@ -11,13 +11,13 @@ vm.runInContext(source.slice(source.indexOf('const isCatalogThread ='),source.in
 const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS));
 
 test('all built-in designs are valid, with Durado still the initial default',()=>{
- assert.deepEqual(designs.map(d=>d.name),['Durado','Aqua Shade','CalStar Grapfighter','Durado no line','Neon Sunset']);
+ assert.deepEqual(designs.map(d=>d.name),['Durado','Aqua Shade','CalStar Grapfighter','Durado no line','Zarape']);
  assert.deepEqual(designs.map(d=>d.bands.length),[17,7,13,13,82]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
 });
 
-test('Neon Sunset uses only Fuji and ProWrap catalog threads and stays within the band limit',()=>{
- const design=designs.find(d=>d.name==='Neon Sunset');
+test('Zarape uses only Fuji and ProWrap catalog threads and stays within the band limit',()=>{
+ const design=designs.find(d=>d.name==='Zarape');
  assert.equal(design.texture,true);
  assert.ok(design.bands.length<=100);
  assert.equal(design.bands.reduce((sum,b)=>sum+b.turns,0),240);
