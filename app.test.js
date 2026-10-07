@@ -35,6 +35,49 @@ function editor(){
 }
 const names=list=>list.children.map(row=>row.children[2].children[0].value);
 
+function blankDesignEditor(unsaved){
+ const result=editor(),{context}=result;
+ Object.assign(context.state,{coverage:.25,diameter:15,blank:'#222222',texture:true});
+ context.hasUnsavedChanges=()=>unsaved;
+ context.confirmAction=()=>{throw Error('Blank design should clear immediately without a confirmation dialog');};
+ context.markClean=()=>{context.cleaned=true;};
+ context.change=fn=>{context.history.push(structuredClone(context.state));fn();context.render();};
+ const source=fs.readFileSync('app.js','utf8');
+ vm.runInContext(source.slice(source.indexOf('function startNewDesign(){'),source.indexOf('function renderStartingPoints(){')),context);
+ return result;
+}
+
+test('new blank design clears colors, preserves dimensions, and keeps an undo snapshot',async()=>{
+ const {context}=blankDesignEditor(false);
+ await context.$('new-design').onclick();
+ assert.equal(context.state.name,'');
+ assert.equal(context.$('design-name').value,'');
+ assert.equal(context.state.bands.length,0);
+ assert.equal(context.$('bands').children.filter(row=>row.className==='band').length,0);
+ assert.equal(context.$('band-count').textContent,'0 bands');
+ assert.equal(context.state.coverage,.25);
+ assert.equal(context.state.diameter,15);
+ assert.equal(context.state.blank,'#101314');
+ assert.equal(context.state.texture,true);
+ assert.equal(context.history[0].bands.length,3);
+ assert.equal(context.cleaned,true);
+ assert.equal(context.prompted,undefined);
+ assert.equal(context.$('design-name').focused,true);
+});
+
+test('new blank design clears unsaved designs immediately and Undo restores them',()=>{
+ const {context}=blankDesignEditor(true);
+ const previous=JSON.stringify(context.state);
+ context.$('new-design').onclick();
+ assert.equal(context.state.bands.length,0);
+ assert.equal(context.history.length,1);
+ assert.equal(context.cleaned,true);
+ const source=fs.readFileSync('app.js','utf8');
+ vm.runInContext(source.slice(source.indexOf("$('reverse').onclick="),source.indexOf("$('design-name').onchange=")),context);
+ context.$('undo').onclick();
+ assert.equal(JSON.stringify(context.state),previous);
+});
+
 test('design library shows saved designs before standard designs',()=>{
  const {context}=editor();
  const saved={name:'My saved design',bands:[]};
@@ -81,11 +124,18 @@ test('dragging maps visual insertion positions back to wrap order',()=>{
  }
 });
 
-test('spirals still connect the next color in left-to-right wrap order',()=>{
+test('spirals keep wrap order but display incoming above outgoing to match neighbors',()=>{
  const {context,state,list}=editor();
+ state.bands[0].color='#112233';
+ state.bands[1].color='#445566';
  list.children[2].children[5].onclick();
  assert.equal(state.bands[1].wrap,'spiral');
  assert.equal(state.bands[1].name,'A');
  assert.equal(state.bands[1].secondary.name,'B');
- assert.deepEqual(names(list),['C','B','A','A']);
+ assert.deepEqual(names(list),['C','B','B','A']);
+ const spiral=list.children[2];
+ const paired=spiral.children[5];
+ assert.equal(spiral.children[1].value,state.bands[1].secondary.color);
+ assert.equal(paired.children[1].value,state.bands[1].color);
+ assert.equal(paired.children[2].value,'A');
 });

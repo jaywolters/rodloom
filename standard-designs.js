@@ -64,7 +64,7 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   return {...design,bands};
  };
  const spiral=(first,second,direction,secondaryTurns,turns=8)=>({...first,turns,wrap:'spiral',direction,secondary:{...second,...(secondaryTurns?{turns:secondaryTurns}:{})}});
- return [{version:1,name:'Durado no line',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
+ return [{version:1,name:'Dorado',coverage:0.25,diameter:15,blank:'#101314',texture:false,bands:[
   solid(cobalt,16),spiral(cobalt,ice,1,15),solid(ice,16),
   spiral(ice,aqua,1,15),solid(aqua,16),spiral(aqua,green,1,110),
   solid(green,220),spiral(green,aqua,-1),solid(aqua,16),
@@ -74,7 +74,7 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   solid(aqua,16),solid(night,150),solid(silver,4),solid(black,3),
   solid(silver,4),solid(night,150),solid(aqua,16)
  ]},
- {version:1,name:'CalStar Grapfighter',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
+ {version:1,name:'Calstar Grafighter',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
   solid(black,10),spiral(black,teal,1,10,4),solid(teal,10),
   spiral(teal,white,1,10,4),solid(white,10),solid(black,150),
   spiral(black,teal,1,1,3),solid(black,150),solid(white,10),

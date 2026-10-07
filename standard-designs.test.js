@@ -11,8 +11,8 @@ const source=fs.readFileSync('app.js','utf8');
 vm.runInContext(source.slice(source.indexOf('const isCatalogThread ='),source.indexOf('const standardDesigns='))+source.slice(source.indexOf('const validColor ='),source.indexOf("try {const saved=")),context);
 const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS));
 
-test('built-in library keeps Durado no line as default and removes Durado',()=>{
- assert.deepEqual(designs.map(d=>d.name),['Durado no line','Aqua Shade','CalStar Grapfighter','Zarape']);
+test('built-in library uses Dorado as the default design',()=>{
+ assert.deepEqual(designs.map(d=>d.name),['Dorado','Aqua Shade','Calstar Grafighter','Zarape']);
  assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,82]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
 });

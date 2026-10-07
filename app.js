@@ -89,9 +89,11 @@ function render(){
   const row=make('div','band');row.dataset.index=i;
   const handle=make('button','drag-handle','⠿');handle.type='button';handle.title=`Drag to reorder band ${i+1}; or use the up/down arrows`;handle.setAttribute('aria-label',handle.title);
   handle.addEventListener('pointerdown',event=>startBandDrag(event,i,handle));row.append(handle);
-  const color=make('input');color.type='color';color.value=b.color;color.setAttribute('aria-label',`Band ${i+1} color`);color.disabled=true;color.title='Catalog preview color (approximate)';
-  const details=make('div','band-details');const name=make('input','name');name.value=b.name;name.maxLength=80;name.setAttribute('aria-label',`Band ${i+1} thread name`);name.readOnly=true;
-  details.append(name);if(b.brand){const brand=make('small','brand-note',b.catalog?`${b.brand} · ${b.line || ''} · ${b.sku || ''}`:`${b.brand} · match unverified`);details.append(brand);}
+  // Match the bottom-to-top list: incoming thread above outgoing thread.
+  const upper=b.wrap==='spiral'?b.secondary:b;
+  const color=make('input');color.type='color';color.value=upper.color;color.setAttribute('aria-label',`Band ${i+1} ${b.wrap==='spiral'?'incoming thread ':''}color`);color.disabled=true;color.title='Catalog preview color (approximate)';
+  const details=make('div','band-details');const name=make('input','name');name.value=upper.name;name.maxLength=80;name.setAttribute('aria-label',`Band ${i+1} ${b.wrap==='spiral'?'incoming ':''}thread name`);name.readOnly=true;
+  details.append(name);if(upper.brand){const brand=make('small','brand-note',upper.catalog?`${upper.brand} · ${upper.line || ''} · ${upper.sku || ''}`:`${upper.brand} · match unverified`);details.append(brand);}
   const turns=make('input','turns');turns.type='number';turns.min=1;turns.max=1000;turns.step=1;turns.value=b.turns;turns.setAttribute('aria-label',`Band ${i+1} turns`);turns.addEventListener('change',()=>{if(!turns.checkValidity()||!turns.value){turns.reportValidity();turns.value=b.turns;return;}change(()=>b.turns=Number(turns.value));});
   const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',i===state.bands.length-1,()=>[state.bands[i+1],state.bands[i]]=[state.bands[i],state.bands[i+1]]],['Move down','↓',i===0,()=>[state.bands[i-1],state.bands[i]]=[state.bands[i],state.bands[i-1]]],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>change(fn);tools.append(btn);}
   row.append(color,details,turns,tools);
@@ -99,8 +101,8 @@ function render(){
    row.classList.add('spiral-band');
    const paired=make('div','spiral-editor');
    paired.append(make('strong','spiral-label','Paired spiral · finished turns'));
-   const second=make('input');second.type='color';second.value=b.secondary.color;second.setAttribute('aria-label',`Band ${i+1} second thread color`);second.disabled=true;second.title='Catalog preview color (approximate)';
-   const secondName=make('input','name');secondName.value=b.secondary.name;secondName.maxLength=80;secondName.setAttribute('aria-label',`Band ${i+1} second thread name`);secondName.readOnly=true;
+   const second=make('input');second.type='color';second.value=b.color;second.setAttribute('aria-label',`Band ${i+1} outgoing thread color`);second.disabled=true;second.title='Catalog preview color (approximate)';
+   const secondName=make('input','name');secondName.value=b.name;secondName.maxLength=80;secondName.setAttribute('aria-label',`Band ${i+1} outgoing thread name`);secondName.readOnly=true;
    const direction=make('select','finish');direction.setAttribute('aria-label',`Band ${i+1} spiral direction`);direction.append(new Option('Spiral /','1'),new Option('Spiral \\','-1'));direction.value=b.direction;direction.onchange=()=>change(()=>b.direction=Number(direction.value));
    paired.append(second,secondName,direction);
    row.append(paired);
@@ -215,8 +217,9 @@ function draw(target=$('preview'),exporting=false){
  const summary=wrapSummary(state.bands,state.coverage,state.diameter);
  const physicalLength=summary.length;
  const physicalHeight=mode==='flat'?Math.PI*(state.diameter+state.coverage):state.diameter+2*state.coverage;
+ // Allow wide actual-size wraps to scroll horizontally, never vertically.
  const w=exporting?1600:actual?Math.min(4000,Math.max(stage.clientWidth,physicalLength*viewScale+100)):stage.clientWidth;
- const h=exporting?640:actual?Math.max(280,physicalHeight*viewScale+160):280;
+ const h=exporting?640:stage.clientHeight;
  const dpr=exporting?1:Math.min(2,window.devicePixelRatio||1);
  if(!exporting){target.style.width=`${w}px`;target.style.height=`${h}px`;} 
  target.width=w*dpr;target.height=h*dpr;const ctx=target.getContext('2d');ctx.scale(dpr,dpr);ctx.fillStyle=!exporting&&document.documentElement.dataset.theme==='dark'?'#303030':'#e6edf2';ctx.fillRect(0,0,w,h);
@@ -225,8 +228,14 @@ function draw(target=$('preview'),exporting=false){
  const annotationColor=!exporting&&document.documentElement.dataset.theme==='dark'?'#bdbdbd':'#506b80';
  ctx.fillStyle=annotationColor;ctx.font=`${exporting?18:11}px sans-serif`;ctx.textAlign='center';
  const scaleLabel=actual?(displayScale==='detail'?'Magnified 4× · not actual size':'Actual size · accurate only after screen calibration'):'Proportional scale · auto-fit, not physical screen size';
- ctx.fillText(scaleLabel+(actual&&physicalLength*viewScale>w-100?' · clipped; use Fit':''),w/2,exporting?100:30);
- if(mode==='rod'){ctx.save();ctx.shadowColor='#00000045';ctx.shadowBlur=18;ctx.shadowOffsetY=12;ctx.fillStyle=state.blank;ctx.fillRect(0,blankTop,w,blankHeight);ctx.restore();}
+ ctx.fillText(scaleLabel+(actual&&(physicalLength*viewScale>w-100||physicalHeight*viewScale>h-160)?' · clipped; use Fit':''),w/2,exporting?100:30);
+ if(mode==='rod'||!state.bands.length){ctx.save();ctx.shadowColor='#00000045';ctx.shadowBlur=18;ctx.shadowOffsetY=12;ctx.fillStyle=state.blank;ctx.fillRect(0,blankTop,w,blankHeight);ctx.restore();}
+ // An empty design shows only the bare blank, without thread shading or wrap rulers.
+ if(!state.bands.length){
+  ctx.fillStyle=annotationColor;
+  ctx.fillText('Bare rod · choose thread colors to start',w/2,h-30);
+  return;
+ }
  let x=left;
  state.bands.forEach(b=>{const bw=bandMetrics(b,state.coverage,state.diameter).length*pixelsPerMm;
   if(b.wrap==='spiral'){drawSpiral(ctx,b,x,top,bw,height,pixelsPerMm);x+=bw;return;}
@@ -255,6 +264,14 @@ $('design-name').onchange=()=>change(()=>state.name=$('design-name').value);
 for(const id of ['coverage','diameter']) $(id).onchange=()=>{if(!$(id).value||!$(id).checkValidity()){$(id).reportValidity();$(id).value=state[id];return;}change(()=>state[id]=Number($(id).value));};
 $('blank').onfocus=checkpoint;$('blank').oninput=()=>{state.blank=$('blank').value;refresh();};$('texture').onchange=()=>change(()=>state.texture=$('texture').checked);
 for(const m of ['rod','flat']) $(`${m}-mode`).onclick=()=>{mode=m;for(const other of ['rod','flat']){$(`${other}-mode`).classList.toggle('active',m===other);$(`${other}-mode`).setAttribute('aria-pressed',String(m===other));}draw();};
+function startNewDesign(){
+ change(()=>{state={...state,name:'',blank:'#101314',bands:[]};});
+ markClean();
+ $('bands').closest('details').open=true;
+ $('design-name').focus();
+ notify('Started a blank design. Choose thread colors from the catalog, or Undo to restore your previous design.');
+}
+$('new-design').onclick=startNewDesign;
 function renderStartingPoints(){
  const list=$('presets');list.replaceChildren();
  let saved=[];
