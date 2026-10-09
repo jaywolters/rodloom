@@ -245,6 +245,8 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  .scale-settings{flex-shrink:0;max-height:35%;overflow-y:auto}
  .preview-stage{flex:1;min-height:170px;height:auto}
  .design-tools{flex:0 1 auto;max-height:44%;min-height:34px;overflow-y:auto;scrollbar-gutter:stable}
+ /* Keep the native collapse control visible while the catalog panel scrolls. */
+ .palette-lookup>summary{position:sticky;top:0;z-index:2;background:var(--white);margin:-8px -10px 0;padding:8px 10px;border-bottom:1px solid var(--line)}
  .starting-points{flex:0 1 auto;min-height:34px;max-height:28%;overflow-y:auto}
  /* The desktop library panel owns scrolling; avoid a nested list scrollbar. */
  .starting-points #presets{max-height:none;overflow:visible}

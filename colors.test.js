@@ -78,6 +78,15 @@ test('quick palette clones design threads once and reuses colors without the cat
  assert.equal(bands[2].wrap,undefined);
 });
 
+test('new quick palette colors appear first and persist in that order',()=>{
+ const {api,context,storage}=workspace();
+ api.toggleQuick(red);api.toggleQuick(gold);
+ assert.deepEqual(Array.from(context.state.quickColors,c=>c.sku),[gold.sku,red.sku]);
+ assert.deepEqual(JSON.parse(storage.get('threadwrap-design')).quickColors.map(c=>c.sku),[gold.sku,red.sku]);
+ api.toggleQuick(red);api.toggleQuick(red);
+ assert.deepEqual(Array.from(context.state.quickColors,c=>c.sku),[red.sku,gold.sku]);
+});
+
 test('favorites persist independently of quick palette and active design',()=>{
  const {$,bands,api,storage}=workspace();
  api.toggleQuick(red);api.toggleFavorite(red);api.toggleQuick(red);

@@ -50,7 +50,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const color=colors.thread(value);if(!color)return;
   const current=collection(section);
   if(!contains(section,color)&&current.length>=colors.limit){notify(`Maximum ${colors.limit} saved colors. Remove a color first.`);return;}
-  const next=contains(section,color)?current.filter(item=>colors.key(item)!==colors.key(color)):[...current,color];
+  const next=contains(section,color)?current.filter(item=>colors.key(item)!==colors.key(color)):section==='quick'?[color,...current]:[...current,color];
   if(section==='quick'){
    change(()=>{state.quickColors=next;});
   }else{library.favorites=next;save();}
@@ -82,7 +82,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    const star=action(`${favorite?'Unfavorite':'Favorite'} ${value.name}`,favorite?'★':'☆',()=>toggle('favorites',value),`${section}-star-${identity}`);
    star.setAttribute('aria-pressed',String(favorite));row.append(star);
    if(section==='quick'){
-    const replace=action(`Replace selected bands with ${value.name} (incoming color for paired spirals)`,'⇄',()=>replaceSelectedBands(value),`${section}-replace-${identity}`);
+    const replace=action(`Replace selected bands with ${value.name}`,'⇄',()=>replaceSelectedBands(value),`${section}-replace-${identity}`);
     replace.className='color-action color-replace';row.append(replace);
     row.append(action(`Remove ${value.name} from this design's quick palette`,'×',()=>toggle('quick',value),`${section}-remove-${identity}`));
    }
