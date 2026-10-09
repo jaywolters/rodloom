@@ -1,7 +1,7 @@
 'use strict';
 (() => {
  const system = window.matchMedia('(prefers-color-scheme: dark)');
- let preference = 'auto';
+ let preference = 'dark';
  try {
   const stored = localStorage.getItem('rodloom-theme');
   if (['auto', 'light', 'dark'].includes(stored)) preference = stored;

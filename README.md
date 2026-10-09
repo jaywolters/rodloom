@@ -12,6 +12,8 @@ The website is hosted on AWS Amplify. The catalog and swatches are static bundle
 
 ## Features
 
+- Compact, Photoshop-inspired workspace with a neutral dark default, light/auto themes, docked color tools, and a larger preview
+- Reusable design swatches, a per-design quick palette, and persistent favorite colors
 - Shaded rod and flat previews with individual turns
 - Regular, metallic, and neon finishes per band
 - Neon yellow and neon green planning swatches
@@ -32,13 +34,24 @@ The catalog snapshot lives in `assets/catalog.json`; all 120-pixel swatches are 
 
 The initial size D coverage of 0.25 mm/turn is an editable estimate, not a universal specification. Measure the width of a test wrap and divide by its turn count. Metallic threads may pack differently; this version uses one coverage value for the whole design.
 
-Thread usage estimates a helix around the blank plus one thread-width diameter allowance. It excludes tag ends, waste, guide feet, taper, and finish buildup. The preview uses the same pixels-per-mm scale on both axes, auto-fitting without distortion. Rod view includes approximate thread buildup (coverage used as thread thickness); flat view unrolls the circumference at the thread centerline. Individual turns are hidden when too small to resolve rather than exaggerated. PNG exports use the same geometry. Actual-size mode is the default. Calibrate the 50 mm reference line with a physical ruler using the pixels-per-mm field; the default is 3.25 CSS pixels/mm for your monitor. Display settings and the “At your bench” coverage/diameter controls are tucked into the collapsed “Display scale & calibration” section. Other monitors require calibration. Calibration stays in this browser and must be repeated after changing zoom or monitors. The preview scrolls horizontally when Actual size or 4× inspection wraps are wider than the panel, but never vertically. Tall previews and wraps beyond the 4000 CSS-pixel canvas limit are clipped; use Fit to window to see the whole pattern. Fit mode and PNG exports preserve proportions but are not physical life-size. Print output is not calibrated. Mirror appends a full reversed copy, including the last band.
+Thread usage estimates a helix around the blank plus one thread-width diameter allowance. It excludes tag ends, waste, guide feet, taper, and finish buildup. The preview uses the same pixels-per-mm scale on both axes, auto-fitting without distortion. Rod view includes approximate thread buildup (coverage used as thread thickness); flat view unrolls the circumference at the thread centerline. Individual turns are hidden when too small to resolve rather than exaggerated. PNG exports use the same geometry. Actual-size mode is the default. Measure the 50 mm reference line with a physical ruler, enter its measured length, and click Apply calibration. Measure again to confirm it is now 50 mm. You can also adjust CSS pixels/mm directly; the default of 3.25 is only an initial estimate, not a detected monitor density. Display settings and the “At your bench” coverage/diameter controls are tucked into the collapsed “Display scale & calibration” section. Other monitors require calibration. Calibration stays in this browser and must be repeated after changing zoom or monitors. Bottom view shows the side where colors start and end; Top shows the opposite face, shifting paired spirals half a revolution without changing wrapping order. Side shows a quarter-revolution (90°) rotation from Bottom. Solid bands look the same from all three sides. These controls also choose the seam for Flat layout and the side used in image exports. The Zoom slider ranges from 1× (calibrated actual size) to 8×; zooming does not change calibration. The preview scrolls horizontally when Actual size or zoomed wraps are wider than the panel, but never vertically. Tall previews and wraps beyond the 4000 CSS-pixel canvas limit are clipped; use Fit to window to see the whole pattern. Fit mode and PNG exports preserve proportions but are not physical life-size. Print output is not calibrated. Mirror appends a full reversed copy, including the last band.
 
-This version supports straight bands and tightly packed two-thread spirals, not open-pitch spirals, cross-wraps, diamonds, or weaving. Browser storage depends on browser permissions; download JSON for durable backups. Fonts use Google Fonts when online and fall back to local sans-serif fonts otherwise. Design data is not uploaded.
+This version supports straight bands and tightly packed two-thread spirals, not open-pitch spirals, cross-wraps, diamonds, or weaving. Browser storage depends on browser permissions; download JSON for durable backups. The interface uses local system fonts and makes no external font requests. Design data is not uploaded.
 
 ## Saved designs
 
-Name your design and click **Save design** to store a snapshot in this browser's LocalStorage. Saving the same name asks before replacing it; use a different name to keep another version. Use **Saved designs** to open or delete snapshots. Editing and autosave update only the current draft, not saved snapshots. Browser storage is local to this browser and site and can be cleared; use **Export JSON** for durable backups or **Import JSON** to open a downloaded design.
+Name your design and click **Save design** to store a snapshot in this browser's LocalStorage. Saving the same name asks before replacing it; use a different name to keep another version. Use **Design library** to open or delete snapshots. Editing and autosave update only the current draft, not saved snapshots. Browser storage is local to this browser and site and can be cleared; use **Export JSON** for durable backups or **Import JSON** to open a downloaded design.
+
+## Color workspace
+
+- **Design colors** shows each unique thread in the current design, including both colors of paired spirals. Click a swatch to add that thread again. **Clone to palette** collects all of them without changing the design.
+- **Auto gray** in the thread catalog is on by default: catalog swatches turn gray when the mouse is elsewhere, and regain color on hover or keyboard focus. Toggle it off to keep colors visible. The preference is saved in this browser; touch devices always show full color.
+- In the **Thread catalog**, click a thread image or **+ Palette** on as many threads as you like. This collects colors into the current design’s quick palette without adding bands or leaving the lookup. Clicking an already-collected image keeps it in the palette. The checked Palette button removes a thread from the quick palette.
+- **Quick palette** is the current design’s working set. A new blank design starts with an empty palette; opening a saved design restores its palette. Click any color in **Quick palette** to add a solid band (10 turns, or 5 for metallic). Set its turns in **Thread bands**. Collecting from the catalog and adding bands from a palette keep your browsing position.
+- Click **☆** in the catalog or quick palette to keep a thread in **Favorites**. Favorites are individual colors, separate from saved designs and appearance themes. Click **★** to unfavorite. Use **+ Palette** in Favorites to collect a thread for the current design without adding a band. Removing a quick-palette color does not remove its favorite or any existing bands.
+- The **⧉** button on a band clones the complete band, including its turns and both strands of a spiral. Undo removes the duplicate.
+
+Favorites remain available across new designs and page reloads in this browser; they are separate from design Undo and JSON exports. The quick palette belongs to the design: it autosaves with the draft, is included in saved designs and JSON exports, and supports Undo. Existing shared quick palettes are moved into the current draft on upgrade. Threads retain their brand, line, SKU, finish, and approximate preview color; different products with identical RGB values remain distinct. Each collection has a 500-thread limit. If browser storage fails, a status message warns that changes cannot be saved. Clearing site data removes browser saves.
 
 ## Spiral transitions
 
@@ -62,6 +75,8 @@ After launch, verify domain ownership in Google Search Console and Bing Webmaste
 
 `node --check catalog.js`
 
-`node --test geometry.test.js`
+`node --test *.test.js`
+
+`node scripts/build.mjs`
 
 `python -m py_compile server.py`

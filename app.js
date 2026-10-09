@@ -3,17 +3,59 @@ const $ = id => document.getElementById(id);
 const isCatalogThread = b => b && b.catalog===true && ['Fuji','ProWrap'].includes(b.brand) && typeof b.sku==='string' && !!b.sku;
 const standardDesigns=window.RODLOOM_STANDARD_DESIGNS;
 let state = structuredClone(standardDesigns[0]);
-let mode='rod', history=[], toastTimer;
-let displayScale='actual', screenScale=3.25;
+let mode='rod', rodSide='bottom', history=[], toastTimer;
+let displayScale='actual', screenScale=3.25, zoom=1;
 try {const stored=Number(localStorage.getItem('threadwrap-screen-scale'));if(stored>=1&&stored<=20)screenScale=stored;}catch{}
-function updateScreenScale(){
- $('screen-scale').value=Number(screenScale.toFixed(3));
+function updateScreenScale(updateInput=true){
+ if(updateInput)$('screen-scale').value=Number(screenScale.toFixed(6));
  $('calibration-ruler').style.width=`${50*screenScale}px`;
  draw();
 }
-$('display-scale').onchange=()=>{displayScale=$('display-scale').value;draw();};
-$('inspect').onclick=()=>{displayScale=displayScale==='detail'?'actual':'detail';$('display-scale').value=displayScale;draw();};
-$('screen-scale').oninput=()=>{const input=$('screen-scale');const value=Number(input.value);if(!Number.isFinite(value)||value<1||value>20)return;screenScale=value;$('calibration-ruler').style.width=`${50*screenScale}px`;try{localStorage.setItem('threadwrap-screen-scale',screenScale);}catch{}draw();};
+function updateZoomControls(){
+ $('preview-zoom').value=zoom;
+ $('zoom-value').textContent=displayScale==='fit'?'Fit':`${Number(zoom.toFixed(1))}×`;
+ $('display-scale').value=displayScale;
+}
+$('display-scale').onchange=()=>{
+ displayScale=$('display-scale').value;
+ if(displayScale==='actual')zoom=1;
+ if(displayScale==='detail'&&zoom===1)zoom=2;
+ updateZoomControls();draw();
+};
+$('preview-zoom').oninput=()=>{
+ const value=Number($('preview-zoom').value);
+ if(!Number.isFinite(value)||value<1||value>8)return;
+ zoom=value;displayScale=zoom===1?'actual':'detail';
+ updateZoomControls();draw();
+};
+for(const side of ['bottom','side','top']) $(`${side}-view`).onclick=()=>{
+ rodSide=side;
+ for(const other of ['bottom','side','top']){
+  $(`${other}-view`).classList.toggle('active',side===other);
+  $(`${other}-view`).setAttribute('aria-pressed',String(side===other));
+ }
+ draw();
+};
+function saveScreenScale(value,updateInput=true){
+ screenScale=value;
+ try{localStorage.setItem('threadwrap-screen-scale',screenScale);}catch{}
+ updateScreenScale(updateInput);
+}
+$('screen-scale').oninput=()=>{const value=Number($('screen-scale').value);if(!Number.isFinite(value)||value<1||value>20)return;saveScreenScale(value,false);};
+$('apply-calibration').onclick=()=>{
+ const input=$('measured-ruler');
+ input.setCustomValidity('');
+ const measured=Number(input.value);
+ const value=screenScale*50/measured;
+ if(!Number.isFinite(measured)||measured<=0||!Number.isFinite(value)||value<1||value>20){
+  input.setCustomValidity('Enter the measured line length in mm (result must be 1–20 CSS pixels/mm).');
+  input.reportValidity();return;
+ }
+ saveScreenScale(value);
+ input.value='';
+ notify('Calibration updated. Measure the line again to check it is 50 mm.');
+};
+$('measured-ruler').oninput=()=>$('measured-ruler').setCustomValidity('');
 const validColor = c => typeof c==='string' && /^#[0-9a-f]{6}$/i.test(c);
 function validate(s){
  if(!s || typeof s.name!=='string' || s.name.length>80 || !Array.isArray(s.bands) || s.bands.length>100) throw Error('Invalid design');
@@ -27,7 +69,8 @@ function validate(s){
    if(!t||typeof t.name!=='string'||t.name.length>80||!validColor(t.color)||!['regular','metallic','neon'].includes(t.finish)||typeof t.brand!=='string'||t.brand.length>40||![1,-1].includes(b.direction))throw Error('Invalid spiral');
   }
  }
- return {version:1,name:s.name,coverage:s.coverage,diameter:s.diameter,blank:s.blank,texture:!!s.texture,bands:s.bands.map(b=>({...b}))};
+ if(s.quickColors!==undefined&&(!Array.isArray(s.quickColors)||s.quickColors.length>500||s.quickColors.some(c=>!isCatalogThread(c)||typeof c.name!=='string'||c.name.length>80||!validColor(c.color)||!['regular','metallic','neon'].includes(c.finish)||c.sku.length>160||['line','code'].some(field=>c[field]!==undefined&&(typeof c[field]!=='string'||c[field].length>160)))))throw Error('Invalid quick palette');
+ return {version:1,name:s.name,coverage:s.coverage,diameter:s.diameter,blank:s.blank,texture:!!s.texture,bands:s.bands.map(b=>({...b})),...(s.quickColors!==undefined?{quickColors:s.quickColors.map(c=>({...c}))}:{})};
 }
 try {const saved=localStorage.getItem('threadwrap-design');if(saved) state=validate(JSON.parse(saved));} catch { /* Start with the default if stored data is unavailable. */ }
 let cleanDesign=localStorageBaseline();
@@ -59,7 +102,7 @@ async function canReplaceDesign(){
 }
 function notify(text){$('toast').textContent=text;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
 function checkpoint(){history.push(structuredClone(state));if(history.length>50)history.shift();}
-function persist(){try{localStorage.setItem('threadwrap-design',JSON.stringify(state));$('storage-status').textContent='Current draft autosaved in this browser';}catch{$('storage-status').textContent='Browser storage unavailable — use Export';}}
+function persist(){try{localStorage.setItem('threadwrap-design',JSON.stringify(state));$('storage-status').textContent='Current draft autosaved in this browser';return true;}catch{$('storage-status').textContent='Browser storage unavailable — use Export';return false;}}
 const libraryKey='threadwrap-designs';
 function readLibrary(){
  const raw=localStorage.getItem(libraryKey);
@@ -96,6 +139,7 @@ function render(){
   details.append(name);if(upper.brand){const brand=make('small','brand-note',upper.catalog?`${upper.brand} · ${upper.line || ''} · ${upper.sku || ''}`:`${upper.brand} · match unverified`);details.append(brand);}
   const turns=make('input','turns');turns.type='number';turns.min=1;turns.max=1000;turns.step=1;turns.value=b.turns;turns.setAttribute('aria-label',`Band ${i+1} turns`);turns.addEventListener('change',()=>{if(!turns.checkValidity()||!turns.value){turns.reportValidity();turns.value=b.turns;return;}change(()=>b.turns=Number(turns.value));});
   const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',i===state.bands.length-1,()=>[state.bands[i+1],state.bands[i]]=[state.bands[i],state.bands[i+1]]],['Move down','↓',i===0,()=>[state.bands[i-1],state.bands[i]]=[state.bands[i],state.bands[i-1]]],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>change(fn);tools.append(btn);}
+  const clone=make('button','clone-band','⧉');clone.title=`Clone band ${i+1}`;clone.setAttribute('aria-label',clone.title);clone.onclick=()=>{if(addBand(b))notify(`Cloned ${b.wrap==='spiral'?'paired spiral':b.name}`);};tools.append(clone);
   row.append(color,details,turns,tools);
   if(b.wrap==='spiral'){
    row.classList.add('spiral-band');
@@ -110,7 +154,7 @@ function render(){
    const transition=make('button','insert-spiral','＋ Spiral into next color');transition.onclick=()=>insertSpiral(i);row.append(transition);
   }
   list.append(row);
- });refresh();
+ });refresh();globalThis.colorWorkspace?.render();
 }
 function insertSpiral(index){
  if(state.bands.length>=100){notify('Maximum 100 bands per design.');return;}
@@ -181,10 +225,10 @@ function drawSpiral(ctx,b,x,top,width,height,pixelsPerMm){
   const origin=x+turn*pitch+strand*strandWidth;
   ctx.beginPath();
   for(let step=0;step<=steps;step++){
-   const f=step/steps,px=origin+spiralAdvance(f,pitch,mode==='flat',b.direction);
+   const f=step/steps,px=origin+spiralAdvance(rodSide==='side'?1-f:f,pitch,mode==='flat',b.direction,rodSide==='top'?.5:rodSide==='side'?.25:0);
    if(step===0)ctx.moveTo(px,top);else ctx.lineTo(px,top+f*height);
   }
-  for(let step=steps;step>=0;step--){const f=step/steps;ctx.lineTo(origin+strandWidth+spiralAdvance(f,pitch,mode==='flat',b.direction),top+f*height);}
+  for(let step=steps;step>=0;step--){const f=step/steps;ctx.lineTo(origin+strandWidth+spiralAdvance(rodSide==='side'?1-f:f,pitch,mode==='flat',b.direction,rodSide==='top'?.5:rodSide==='side'?.25:0),top+f*height);}
   ctx.closePath();ctx.fillStyle=thread.color;ctx.fill();
   if(mode==='rod'||thread.finish==='metallic'){
    const shine=ctx.createLinearGradient(0,top,0,top+height);
@@ -206,14 +250,8 @@ function reflectedBand(b){
 function draw(target=$('preview'),exporting=false){
  const stage=$('preview').parentElement;
  const actual=!exporting&&displayScale!=='fit';
- const viewScale=screenScale*(displayScale==='detail'?4:1);
- if(!exporting){
-  const inspecting=displayScale==='detail';
-  const inspectLabel=inspecting?'Actual size':'Inspect 4×';
-  $('inspect').title=inspectLabel;
-  $('inspect').setAttribute('aria-label',inspectLabel);
-  $('inspect').setAttribute('aria-pressed',String(inspecting));
- }
+ const viewScale=screenScale*zoom;
+ if(!exporting)$('preview').setAttribute('aria-label',`${rodSide[0].toUpperCase()+rodSide.slice(1)} ${mode==='flat'?'flat layout':'rod view'} of your thread wrapping pattern`);
  const summary=wrapSummary(state.bands,state.coverage,state.diameter);
  const physicalLength=summary.length;
  const physicalHeight=mode==='flat'?Math.PI*(state.diameter+state.coverage):state.diameter+2*state.coverage;
@@ -227,8 +265,8 @@ function draw(target=$('preview'),exporting=false){
  const {left,width,top,height,blankTop,blankHeight,pixelsPerMm,pitch}=wrapGeometry({turns:total,coverage:state.coverage,diameter:state.diameter,width:w,height:h,flat:mode==='flat',screenScale:actual?viewScale:null});
  const annotationColor=!exporting&&document.documentElement.dataset.theme==='dark'?'#bdbdbd':'#506b80';
  ctx.fillStyle=annotationColor;ctx.font=`${exporting?18:11}px sans-serif`;ctx.textAlign='center';
- const scaleLabel=actual?(displayScale==='detail'?'Magnified 4× · not actual size':'Actual size · accurate only after screen calibration'):'Proportional scale · auto-fit, not physical screen size';
- ctx.fillText(scaleLabel+(actual&&(physicalLength*viewScale>w-100||physicalHeight*viewScale>h-160)?' · clipped; use Fit':''),w/2,exporting?100:30);
+ const scaleLabel=actual?(zoom!==1?`Magnified ${Number(zoom.toFixed(1))}× · not actual size`:'Actual size · accurate only after screen calibration'):'Proportional scale · auto-fit, not physical screen size';
+ ctx.fillText(`${rodSide[0].toUpperCase()+rodSide.slice(1)} view · `+scaleLabel+(actual&&(physicalLength*viewScale>w-100||physicalHeight*viewScale>h-160)?' · clipped; use Fit':''),w/2,exporting?100:30);
  if(mode==='rod'||!state.bands.length){ctx.save();ctx.shadowColor='#00000045';ctx.shadowBlur=18;ctx.shadowOffsetY=12;ctx.fillStyle=state.blank;ctx.fillRect(0,blankTop,w,blankHeight);ctx.restore();}
  // An empty design shows only the bare blank, without thread shading or wrap rulers.
  if(!state.bands.length){
@@ -251,12 +289,13 @@ function draw(target=$('preview'),exporting=false){
  ctx.fillText(mode==='flat'?`${(height/pixelsPerMm).toFixed(2)} mm circumference`:`${state.diameter} mm blank`,0,0);ctx.restore();
  if(exporting){ctx.textAlign='left';ctx.font='bold 30px sans-serif';ctx.fillText(state.name||'Untitled design',left,65);ctx.font='18px sans-serif';ctx.fillText(`Size D · ${state.coverage} mm / turn · ${state.diameter} mm blank`,left,h-75);ctx.fillText('Rod Loom • colors and metallic effects are approximations',left,h-40);}
 }
-function addBand(b){
- if(!isCatalogThread(b)){notify('Choose a Fuji or ProWrap catalog thread.');return;}
- if(state.bands.length>=100){notify('Maximum 100 bands per design.');return;}
+function addBand(b,{reveal=true}={}){
+ if(!isCatalogThread(b)){notify('Choose a Fuji or ProWrap catalog thread.');return false;}
+ if(state.bands.length>=100){notify('Maximum 100 bands per design.');return false;}
  change(()=>state.bands.push(structuredClone(b)));
  $('bands').closest('details').open=true;
- $('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
+ if(reveal)$('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
+ return true;
 }
 $('mirror').onclick=()=>{if(state.bands.length*2>100){notify('Mirroring would exceed 100 bands.');return;}change(()=>state.bands.push(...state.bands.map(reflectedBand).reverse()));notify('Added a reversed copy of every band.');};
 $('reverse').onclick=()=>change(()=>state.bands=state.bands.map(reflectedBand).reverse());$('undo').onclick=()=>{if(history.length){state=history.pop();render();}};
@@ -265,7 +304,7 @@ for(const id of ['coverage','diameter']) $(id).onchange=()=>{if(!$(id).value||!$
 $('blank').onfocus=checkpoint;$('blank').oninput=()=>{state.blank=$('blank').value;refresh();};$('texture').onchange=()=>change(()=>state.texture=$('texture').checked);
 for(const m of ['rod','flat']) $(`${m}-mode`).onclick=()=>{mode=m;for(const other of ['rod','flat']){$(`${other}-mode`).classList.toggle('active',m===other);$(`${other}-mode`).setAttribute('aria-pressed',String(m===other));}draw();};
 function startNewDesign(){
- change(()=>{state={...state,name:'',blank:'#101314',bands:[]};});
+ change(()=>{state={...state,name:'',blank:'#101314',bands:[],quickColors:[]};});
  markClean();
  $('bands').closest('details').open=true;
  $('design-name').focus();
@@ -282,7 +321,7 @@ function renderStartingPoints(){
   btn.append(strip,make('span','preset-name',preset.name),make('small','',custom?'Saved in this browser':'Standard design'));
   btn.onclick=async()=>{
    if(!await canReplaceDesign())return;
-   change(()=>{state=structuredClone(preset);});
+   change(()=>{state={...structuredClone(preset),quickColors:structuredClone(preset.quickColors||[])};});
    markClean();
   };
   const entry=make('div','library-entry');entry.append(btn);
@@ -312,7 +351,7 @@ $('save').onclick=async()=>{
 };
 $('export').onclick=()=>{download(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),`${filename()}.json`);notify('Design downloaded.');};
 $('image').onclick=()=>{const canvas=make('canvas');draw(canvas,true);canvas.toBlob(blob=>{if(blob)download(blob,`${filename()}.png`);else notify('Could not export the image. Please try again.');});};
-$('import').onclick=()=>$('file').click();$('file').onchange=async()=>{const file=$('file').files[0];if(!file)return;try{if(file.size>250000)throw Error('File too large');const next=validate(JSON.parse(await file.text()));if(await canReplaceDesign()){change(()=>state=next);markClean();notify('Design opened.');}}catch{notify('Cannot open this file. Choose a valid Rod Loom design file.');}finally{$('file').value='';}};
+$('import').onclick=()=>$('file').click();$('file').onchange=async()=>{const file=$('file').files[0];if(!file)return;try{if(file.size>250000)throw Error('File too large');const next=validate(JSON.parse(await file.text()));if(await canReplaceDesign()){change(()=>state={...next,quickColors:next.quickColors||[]});markClean();notify('Design opened.');}}catch{notify('Cannot open this file. Choose a valid Rod Loom design file.');}finally{$('file').value='';}};
 document.querySelector('.starting-points').addEventListener('toggle',event=>{
  if(event.currentTarget.open)renderStartingPoints();
 });

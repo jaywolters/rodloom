@@ -1,6 +1,20 @@
 // Catalog names/codes come from the retailer. Photo sampling is visual approximation only.
 (() => {
- let items=[], warnings=[], loaded=false;
+ let items=[], warnings=[], loaded=false, syncActions=[];
+ const autoGrayKey='rodloom-catalog-auto-gray';
+ let autoGray=true;
+ try{autoGray=localStorage.getItem(autoGrayKey)!=='false';}catch{}
+ function renderAutoGray(){
+  $('thread-catalog').dataset.autoGray=String(autoGray);
+  $('catalog-auto-gray').setAttribute('aria-pressed',String(autoGray));
+  $('catalog-auto-gray').textContent=`Auto gray: ${autoGray?'On':'Off'}`;
+ }
+ $('catalog-auto-gray').onclick=()=>{
+  autoGray=!autoGray;renderAutoGray();
+  try{localStorage.setItem(autoGrayKey,String(autoGray));}catch{}
+ };
+ renderAutoGray();
+ window.addEventListener('colorschange',()=>syncActions.forEach(sync=>sync()));
  const sampled=new Map();
  function thumbnailUrl(item){
   // Only bundled, content-addressed images are allowed. No remote/API fallback.
@@ -32,12 +46,13 @@
   if(!loaded)return;
   const query=$('color-search').value.trim().toLowerCase(),brand=$('thread-brand').value,line=$('thread-line').value;
   const matches=items.filter(i=>i.brand===brand&&(!line||i.line===line)&&`${i.name} ${i.code} ${i.sku} ${i.line} ${i.finish}`.toLowerCase().includes(query));
-  const results=$('color-results');results.replaceChildren();results.classList.add('catalog-grid');
+  const results=$('color-results');results.replaceChildren();results.classList.add('catalog-grid');syncActions=[];
   $('catalog-status').textContent=`${matches.length} size D colors · Mud Hole catalog${warnings.length?' · Some lines unavailable or cached':''}`;
   $('catalog-status').title=warnings.join('; ');
   for(const item of matches){
    const card=make('div','catalog-card');
-   const button=make('button','catalog-choice');button.title=`Add ${item.brand} ${item.name}, ${item.line}, size D`;
+   const button=make('button','catalog-choice');button.title=`Collect ${item.brand} ${item.name}, ${item.line}, size D in this design's quick palette`;
+   button.setAttribute('aria-label',button.title);
    const image=make('img','catalog-photo');image.alt=`${item.name} thread swatch`;image.loading='lazy';image.decoding='async';image.width=100;image.height=86;
    const chip=make('span','sample-chip');chip.title='Approximate photo-sampled preview color';chip.style.background='#808080';
    if(sampled.has(item.id)){chip.style.background=sampled.get(item.id);button.disabled=false;}
@@ -55,14 +70,27 @@
    const name=make('strong','',item.name), detail=make('small','',`${item.line} · D`);
    const availability=make('small','stock-note',item.available?'':'Listed out of stock');
    button.append(image,chip,name,detail,availability);
+   const thread=()=>({name:item.name,color:sampled.get(item.id)||'#808080',turns:item.finish==='metallic'?5:10,finish:item.finish,brand:item.brand,line:item.line,sku:item.sku,code:item.code,catalog:true,source:item.source});
    button.onclick=()=>{
-    const color=sampled.get(item.id);
-    if(state.bands.length>=100){notify('Maximum 100 bands per design.');return;}
-    addBand({name:item.name,color:color||'#808080',turns:item.finish==='metallic'?5:10,finish:item.finish,brand:item.brand,line:item.line,sku:item.sku,code:item.code,catalog:true,source:item.source});
-    notify(color?`${item.name} added · preview color is approximate`:`${item.name} added · preview unavailable, shown in neutral gray`);
+    const value=thread();
+    if(window.colorWorkspace.hasQuick(value)){notify(`${item.name} is already in this design's quick palette`);return;}
+    window.colorWorkspace.toggleQuick(value);
+    if(window.colorWorkspace.hasQuick(value))notify(`${item.name} collected in quick palette · click its palette swatch to add a band`);
    };
+   const actions=make('div','catalog-actions'),collect=make('button','catalog-collect','+ Palette'),favorite=make('button','catalog-favorite','☆');
+   function sync(){
+    const pinned=window.colorWorkspace.hasQuick(thread()),starred=window.colorWorkspace.isFavorite(thread());
+    collect.textContent=pinned?'✓ Palette':'+ Palette';collect.setAttribute('aria-pressed',String(pinned));
+    collect.title=`${pinned?'Remove':'Collect'} ${item.name} ${pinned?'from':'in'} this design's quick palette`;
+    collect.setAttribute('aria-label',collect.title);
+    favorite.textContent=starred?'★':'☆';favorite.setAttribute('aria-pressed',String(starred));
+    favorite.title=`${starred?'Unfavorite':'Favorite'} ${item.name}`;favorite.setAttribute('aria-label',favorite.title);
+   }
+   collect.onclick=()=>window.colorWorkspace.toggleQuick(thread());
+   favorite.onclick=()=>window.colorWorkspace.toggleFavorite(thread());
+   syncActions.push(sync);sync();actions.append(collect,favorite);
    const link=make('a','catalog-source','View product');link.href=item.source;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label',`View ${item.brand} ${item.name} ${item.line} on Mud Hole`);
-   card.append(button,link);results.append(card);
+   card.append(button,actions,link);results.append(card);
   }
   if(!matches.length)results.append(make('p','hint','No matching size D colors. Try a color code, another thread line, or a broader search.'));
  }

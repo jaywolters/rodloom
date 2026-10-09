@@ -1,5 +1,5 @@
 import { mkdirSync, copyFileSync, writeFileSync, cpSync, readFileSync, existsSync } from 'node:fs';
-const files=['index.html','theme.js','standard-designs.js','app.js','catalog.js','geometry.js','style.css','favicon.svg','robots.txt','sitemap.xml'];
+const files=['index.html','theme.js','standard-designs.js','app.js','colors.js','catalog.js','geometry.js','style.css','favicon.svg','robots.txt','sitemap.xml'];
 const endpoint=process.env.RODLOOM_API_BASE||'';
 if(endpoint && !/^https:\/\/[a-z0-9]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com$/.test(endpoint)) throw Error('Invalid catalog API endpoint');
 const catalog=JSON.parse(readFileSync('assets/catalog.json','utf8'));
