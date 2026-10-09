@@ -33,7 +33,7 @@ function editor(){
  context.render();
  return {context,state,list:$('bands')};
 }
-const names=list=>list.children.map(row=>row.children[2].children[0].value);
+const names=list=>list.children.map(row=>row.children[3].children[0].value);
 
 function blankDesignEditor(unsaved){
  const result=editor(),{context}=result;
@@ -113,7 +113,7 @@ test('cloning a band preserves turns and independently copies a paired spiral',(
  const {context,state,list}=editor();
  context.insertSpiral(0);
  state.bands[1].turns=13;
- list.children[2].children[4].children[3].onclick();
+ list.children[2].children[5].children[3].onclick();
  const clone=state.bands.at(-1),original=state.bands[1];
  assert.deepEqual(clone,structuredClone(original));
  assert.notEqual(clone,original);
@@ -124,7 +124,7 @@ test('cloning a band preserves turns and independently copies a paired spiral',(
 
 test('blocks copy in wrap order, paste independently, and repeat with one undo per paste',()=>{
  const {context,state,list}=editor();
- const select=row=>{const checkbox=row.children[4].children[4];checkbox.checked=true;checkbox.onchange();};
+ const select=row=>{const checkbox=row.children[1];checkbox.checked=true;checkbox.onchange();};
  select(list.children[1]);select(list.children[2]);
  context.$('copy-bands').onclick();
  assert.equal(context.history.length,0);
@@ -170,12 +170,12 @@ test('cloning respects the design band limit',()=>{
 
 test('move arrows follow visible order with correct edge disabling',()=>{
  const {state,list}=editor();
- assert.equal(list.children[0].children[4].children[0].disabled,true);
- assert.equal(list.children[2].children[4].children[1].disabled,true);
- list.children[1].children[4].children[0].onclick();
+ assert.equal(list.children[0].children[5].children[0].disabled,true);
+ assert.equal(list.children[2].children[5].children[1].disabled,true);
+ list.children[1].children[5].children[0].onclick();
  assert.deepEqual(names(list),['B','C','A']);
  assert.deepEqual(state.bands.map(b=>b.name),['A','C','B']);
- list.children[0].children[4].children[1].onclick();
+ list.children[0].children[5].children[1].onclick();
  assert.deepEqual(names(list),['C','B','A']);
 });
 
@@ -187,7 +187,7 @@ test('dragging maps visual insertion positions back to wrap order',()=>{
   handle.listeners.pointermove({clientY:y});
   handle.listeners.pointerup({type:'pointerup'});
   assert.deepEqual(names(list),expected);
-  assert.equal(list.children.find(row=>row.children[0].focused).children[2].children[0].value,from===2?'A':'C');
+  assert.equal(list.children.find(row=>row.children[0].focused).children[3].children[0].value,from===2?'A':'C');
  }
 });
 
@@ -195,14 +195,14 @@ test('spirals keep wrap order but display incoming above outgoing to match neigh
  const {context,state,list}=editor();
  state.bands[0].color='#112233';
  state.bands[1].color='#445566';
- list.children[2].children[5].onclick();
+ list.children[2].children[6].onclick();
  assert.equal(state.bands[1].wrap,'spiral');
  assert.equal(state.bands[1].name,'A');
  assert.equal(state.bands[1].secondary.name,'B');
  assert.deepEqual(names(list),['C','B','B','A']);
  const spiral=list.children[2];
- const paired=spiral.children[5];
- assert.equal(spiral.children[1].value,state.bands[1].secondary.color);
+ const paired=spiral.children[6];
+ assert.equal(spiral.children[2].value,state.bands[1].secondary.color);
  assert.equal(paired.children[1].value,state.bands[1].color);
  assert.equal(paired.children[2].value,'A');
 });

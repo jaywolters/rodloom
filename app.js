@@ -169,8 +169,8 @@ function render(){
   const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',i===state.bands.length-1,()=>[state.bands[i+1],state.bands[i]]=[state.bands[i],state.bands[i+1]]],['Move down','↓',i===0,()=>[state.bands[i-1],state.bands[i]]=[state.bands[i],state.bands[i-1]]],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>change(fn);tools.append(btn);}
   const clone=make('button','clone-band','⧉');clone.title=`Clone band ${i+1}`;clone.setAttribute('aria-label',clone.title);clone.onclick=()=>{if(addBand(b))notify(`Cloned ${b.wrap==='spiral'?'paired spiral':b.name}`);};tools.append(clone);
   const select=make('input','select-band');select.type='checkbox';select.checked=selectedBands.has(b);select.title=`Select band ${i+1} for copying`;select.setAttribute('aria-label',select.title);
-  select.onchange=()=>{if(select.checked)selectedBands.add(b);else selectedBands.delete(b);updateBlockControls();};tools.append(select);
-  row.append(color,details,turns,tools);
+  select.onchange=()=>{if(select.checked)selectedBands.add(b);else selectedBands.delete(b);updateBlockControls();};
+  row.append(select,color,details,turns,tools);
   if(b.wrap==='spiral'){
    row.classList.add('spiral-band');
    const paired=make('div','spiral-editor');

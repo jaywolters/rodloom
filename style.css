@@ -181,15 +181,16 @@ summary:hover{color:var(--blue)}
 .design-actions .icon-button{width:25px;height:26px;padding:4px}
 .thread-design{border-top:1px solid var(--line);padding-top:8px}
 .thread-design summary{font-size:12px;margin-bottom:8px}
-.bands-heading{display:grid;grid-template-columns:1fr 49px 80px;gap:5px;padding:0 0 5px 46px;font-size:9px;color:var(--muted)}
-.band{position:relative;display:grid;grid-template-columns:15px 25px minmax(0,1fr) 49px 80px;column-gap:5px;row-gap:3px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.bands-heading{display:grid;grid-template-columns:1fr 49px 80px;gap:5px;padding:0 0 5px 67px;font-size:9px;color:var(--muted)}
+.band{position:relative;display:grid;grid-template-columns:15px 16px 25px minmax(0,1fr) 49px 80px;column-gap:5px;row-gap:3px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .band-details{display:contents}
 .band>.drag-handle{grid-column:1;grid-row:1}
-.band>input[type=color]{grid-column:2;grid-row:1}
-.band-details>.name{grid-column:3;grid-row:1}
-.band>.turns{grid-column:4;grid-row:1}
-.band>.band-tools{grid-column:5;grid-row:1}
-.band-details>.brand-note{grid-column:3/-1;grid-row:2;min-width:0}
+.band>.select-band{grid-column:2;grid-row:1}
+.band>input[type=color]{grid-column:3;grid-row:1}
+.band-details>.name{grid-column:4;grid-row:1}
+.band>.turns{grid-column:5;grid-row:1}
+.band>.band-tools{grid-column:6;grid-row:1}
+.band-details>.brand-note{grid-column:4/-1;grid-row:2;min-width:0}
 .band input[type=color]{height:27px;width:25px;padding:0;border:0;background:transparent;opacity:1;cursor:default}
 .band input.name{font-size:11px;padding:4px 5px;border-color:transparent;background:var(--subtle)}
 .band input.turns{font-size:11px;padding:4px 2px 4px 5px;font-variant-numeric:tabular-nums}
@@ -203,12 +204,12 @@ summary:hover{color:var(--blue)}
 .block-actions button{font-size:11px;padding:6px 8px}
 #block-status{flex-basis:100%;font-size:11px;color:var(--muted)}
 .band-tools{display:flex;flex-wrap:wrap;gap:0}
-.band-tools .select-band{width:16px;height:16px;margin:4px 2px;accent-color:var(--ink);cursor:pointer}
+.band>.select-band{width:16px;height:16px;margin:0;accent-color:var(--ink);cursor:pointer}
 .band-tools button{width:20px;height:25px;border:0;padding:3px 1px;font-size:13px;background:transparent;color:var(--muted)}
 .band-tools .clone-band{order:-1;font-size:16px;color:var(--ink)}
 .insert-spiral{position:absolute;top:0;left:50%;transform:translate(-50%,-50%);z-index:1;padding:0 7px;border:1px solid var(--line);border-radius:3px;background:var(--subtle);color:var(--muted);font-size:9px;line-height:15px;white-space:nowrap}
 .spiral-band{background:var(--subtle)}
-.spiral-editor{grid-column:2/-1;display:grid;grid-template-columns:25px minmax(0,1fr) auto;gap:5px;align-items:center;padding-bottom:3px}
+.spiral-editor{grid-column:3/-1;display:grid;grid-template-columns:25px minmax(0,1fr) auto;gap:5px;align-items:center;padding-bottom:3px}
 .spiral-label{grid-column:1/-1;font-weight:400;font-size:9px;color:var(--muted)}
 .spiral-editor .finish{font-size:10px;padding:3px;background:var(--field)}
 .thread-design>.hint{margin-top:8px}
@@ -261,7 +262,7 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  .workbench{grid-template-columns:minmax(0,1fr) 390px}
  .document-type{display:none}
  .summary-note{display:none}
- .band{grid-template-columns:13px 23px minmax(0,1fr) 45px 76px;column-gap:4px}
+ .band{grid-template-columns:13px 16px 23px minmax(0,1fr) 45px 76px;column-gap:4px}
  .band-tools button{width:19px}
  .design-actions #band-count{display:none}
 }
@@ -277,10 +278,10 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  .editor{min-width:0}
  .design-name-row{grid-template-columns:1fr}
  .design-actions{grid-column:1;justify-content:flex-end}
- .band{grid-template-columns:12px 22px minmax(0,1fr) 43px;column-gap:4px}
- .band>.band-tools{grid-column:3/-1;grid-row:3;justify-content:flex-end}
- .band-details>.brand-note{grid-column:3/-1}
- .bands-heading{grid-template-columns:1fr 43px;padding-left:42px;gap:4px}
+ .band{grid-template-columns:12px 16px 22px minmax(0,1fr) 43px;column-gap:4px}
+ .band>.band-tools{grid-column:4/-1;grid-row:3;justify-content:flex-end}
+ .band-details>.brand-note{grid-column:4/-1}
+ .bands-heading{grid-template-columns:1fr 43px;padding-left:62px;gap:4px}
  .spiral-editor{grid-row:4}
  footer{flex-wrap:wrap}
 }
@@ -305,9 +306,9 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  .design-actions{grid-column:2;grid-row:2}
  .design-actions #band-count{display:none}
  .color-workspace [role=tabpanel]{max-height:220px}
- .band{grid-template-columns:15px 25px minmax(0,1fr) 45px 80px;column-gap:4px}
- .band>.band-tools{grid-column:5;grid-row:1}
- .bands-heading{grid-template-columns:1fr 45px 80px;padding-left:48px}
+ .band{grid-template-columns:15px 16px 25px minmax(0,1fr) 45px 80px;column-gap:4px}
+ .band>.band-tools{grid-column:6;grid-row:1}
+ .bands-heading{grid-template-columns:1fr 45px 80px;padding-left:68px}
  .spiral-editor{grid-row:3}
  footer{font-size:9px;gap:3px}
  .recipe .panel-heading{flex-wrap:wrap}
