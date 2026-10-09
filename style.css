@@ -199,7 +199,11 @@ summary:hover{color:var(--blue)}
 .dragging .drag-handle{cursor:grabbing}
 .band.drop-before{box-shadow:0 -2px 0 var(--blue)}
 .band.drop-after{box-shadow:0 2px 0 var(--blue)}
-.band-tools{display:flex;gap:0}
+.block-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.block-actions button{font-size:11px;padding:6px 8px}
+#block-status{flex-basis:100%;font-size:11px;color:var(--muted)}
+.band-tools{display:flex;flex-wrap:wrap;gap:0}
+.band-tools .select-band{width:16px;height:16px;margin:4px 2px;accent-color:var(--ink);cursor:pointer}
 .band-tools button{width:20px;height:25px;border:0;padding:3px 1px;font-size:13px;background:transparent;color:var(--muted)}
 .band-tools .clone-band{order:-1;font-size:16px;color:var(--ink)}
 .insert-spiral{position:absolute;top:0;left:50%;transform:translate(-50%,-50%);z-index:1;padding:0 7px;border:1px solid var(--line);border-radius:3px;background:var(--subtle);color:var(--muted);font-size:9px;line-height:15px;white-space:nowrap}

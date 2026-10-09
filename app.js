@@ -4,6 +4,7 @@ const isCatalogThread = b => b && b.catalog===true && ['Fuji','ProWrap'].include
 const standardDesigns=window.RODLOOM_STANDARD_DESIGNS;
 let state = structuredClone(standardDesigns[0]);
 let mode='rod', rodSide='bottom', history=[], toastTimer;
+let selectedBands=new Set(), bandClipboard=[];
 let displayScale='actual', screenScale=3.25, zoom=1;
 try {const stored=Number(localStorage.getItem('threadwrap-screen-scale'));if(stored>=1&&stored<=20)screenScale=stored;}catch{}
 function updateScreenScale(updateInput=true){
@@ -121,7 +122,34 @@ async function deleteDesign(name){
 }
 function change(fn){checkpoint();fn();render();}
 function make(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
+function updateBlockControls(){
+ $('copy-bands').disabled=!selectedBands.size;
+ $('clear-band-selection').disabled=!selectedBands.size;
+ $('paste-bands').disabled=!bandClipboard.length||state.bands.length+bandClipboard.length>100;
+ $('block-status').textContent=`${selectedBands.size} selected · ${bandClipboard.length} copied`;
+}
+function copySelectedBands(){
+ if(!selectedBands.size)return;
+ bandClipboard=structuredClone(state.bands.filter(b=>selectedBands.has(b)));
+ updateBlockControls();notify(`Copied ${bandClipboard.length} bands in wrapping order.`);
+}
+function pasteBands(){
+ if(!bandClipboard.length)return;
+ if(state.bands.length+bandClipboard.length>100){notify('Pasting would exceed 100 bands.');return;}
+ change(()=>{
+  const copies=structuredClone(bandClipboard);
+  state.bands.push(...copies);selectedBands=new Set(copies);
+ });
+ $('bands').closest('details').open=true;
+ $('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
+ notify(`Pasted ${bandClipboard.length} bands at the end of the wrap. Adjust their turns below.`);
+}
 function render(){
+ selectedBands=new Set([...selectedBands].filter(b=>state.bands.includes(b)));
+ $('copy-bands').onclick=copySelectedBands;
+ $('paste-bands').onclick=pasteBands;
+ $('clear-band-selection').onclick=()=>{selectedBands.clear();render();};
+ updateBlockControls();
  $('design-name').value=state.name;$('coverage').value=state.coverage;$('diameter').value=state.diameter;$('blank').value=state.blank;$('texture').checked=state.texture;
  $('preview-name').textContent=state.name||'Untitled design';$('band-count').textContent=`${state.bands.length} bands`;$('undo').disabled=!history.length;
  const list=$('bands');list.replaceChildren();
@@ -140,6 +168,8 @@ function render(){
   const turns=make('input','turns');turns.type='number';turns.min=1;turns.max=1000;turns.step=1;turns.value=b.turns;turns.setAttribute('aria-label',`Band ${i+1} turns`);turns.addEventListener('change',()=>{if(!turns.checkValidity()||!turns.value){turns.reportValidity();turns.value=b.turns;return;}change(()=>b.turns=Number(turns.value));});
   const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',i===state.bands.length-1,()=>[state.bands[i+1],state.bands[i]]=[state.bands[i],state.bands[i+1]]],['Move down','↓',i===0,()=>[state.bands[i-1],state.bands[i]]=[state.bands[i],state.bands[i-1]]],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>change(fn);tools.append(btn);}
   const clone=make('button','clone-band','⧉');clone.title=`Clone band ${i+1}`;clone.setAttribute('aria-label',clone.title);clone.onclick=()=>{if(addBand(b))notify(`Cloned ${b.wrap==='spiral'?'paired spiral':b.name}`);};tools.append(clone);
+  const select=make('input','select-band');select.type='checkbox';select.checked=selectedBands.has(b);select.title=`Select band ${i+1} for copying`;select.setAttribute('aria-label',select.title);
+  select.onchange=()=>{if(select.checked)selectedBands.add(b);else selectedBands.delete(b);updateBlockControls();};tools.append(select);
   row.append(color,details,turns,tools);
   if(b.wrap==='spiral'){
    row.classList.add('spiral-band');

@@ -26,10 +26,10 @@ function editor(){
  const $=id=>elements[id]??=(new Element());
  $('bands').details={open:false};
  const state={name:'Test',bands:['A','B','C'].map(name=>({name,color:'#123456',turns:1}))};
- const context=vm.createContext({state,$,history:[],make:(tag,cls,text)=>Object.assign(new Element(cls),{textContent:text}),refresh(){},notify(){},Option:Element,structuredClone,isCatalogThread:()=>true});
+ const context=vm.createContext({state,$,history:[],selectedBands:new Set(),bandClipboard:[],make:(tag,cls,text)=>Object.assign(new Element(cls),{textContent:text}),refresh(){},notify(){},Option:Element,structuredClone,isCatalogThread:()=>true});
  const source=fs.readFileSync('app.js','utf8');
- vm.runInContext(source.slice(source.indexOf('function render(){'),source.indexOf('function refresh(){'))+source.slice(source.indexOf('function addBand('),source.indexOf("$('mirror').onclick")),context);
- context.change=fn=>{fn();context.render();};
+ vm.runInContext(source.slice(source.indexOf('function updateBlockControls(){'),source.indexOf('function refresh(){'))+source.slice(source.indexOf('function addBand('),source.indexOf("$('mirror').onclick")),context);
+ context.change=fn=>{context.history.push(structuredClone(context.state));fn();context.render();};
  context.render();
  return {context,state,list:$('bands')};
 }
@@ -120,6 +120,45 @@ test('cloning a band preserves turns and independently copies a paired spiral',(
  assert.notEqual(clone.secondary,original.secondary);
  clone.secondary.name='Independent';
  assert.equal(original.secondary.name,'B');
+});
+
+test('blocks copy in wrap order, paste independently, and repeat with one undo per paste',()=>{
+ const {context,state,list}=editor();
+ const select=row=>{const checkbox=row.children[4].children[4];checkbox.checked=true;checkbox.onchange();};
+ select(list.children[1]);select(list.children[2]);
+ context.$('copy-bands').onclick();
+ assert.equal(context.history.length,0);
+ state.bands[0].turns=12;
+ context.$('paste-bands').onclick();
+ assert.deepEqual(state.bands.map(b=>b.name),['A','B','C','A','B']);
+ assert.equal(state.bands[3].turns,1);
+ state.bands[3].turns=11;
+ context.$('paste-bands').onclick();
+ assert.equal(state.bands[5].turns,1);
+ assert.equal(context.history.length,2);
+ assert.equal(context.history.at(-1).bands.length,5);
+ assert.equal(context.selectedBands.size,2);
+ assert.equal(list.firstElementChild.scrolled.block,'start');
+ context.$('clear-band-selection').onclick();
+ assert.equal(context.$('copy-bands').disabled,true);
+ assert.equal(context.bandClipboard.length,2);
+});
+
+test('block paste preserves nested spirals and rejects overflow without a partial paste',()=>{
+ const {context,state}=editor();
+ context.insertSpiral(0);
+ context.selectedBands.add(state.bands[1]);context.copySelectedBands();context.pasteBands();
+ assert.notEqual(state.bands.at(-1).secondary,state.bands[1].secondary);
+ state.bands.at(-1).secondary.name='Independent';
+ assert.equal(context.bandClipboard[0].secondary.name,'B');
+ while(state.bands.length<100)state.bands.push(structuredClone(state.bands[0]));
+ const checkpoints=context.history.length;
+ context.pasteBands();
+ assert.equal(state.bands.length,100);
+ assert.equal(context.history.length,checkpoints);
+ context.state=structuredClone(state);context.render();
+ assert.equal(context.selectedBands.size,0);
+ assert.equal(context.$('paste-bands').disabled,true);
 });
 
 test('cloning respects the design band limit',()=>{

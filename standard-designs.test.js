@@ -12,9 +12,32 @@ vm.runInContext(source.slice(source.indexOf('const isCatalogThread ='),source.in
 const designs=JSON.parse(JSON.stringify(context.window.RODLOOM_STANDARD_DESIGNS));
 
 test('built-in library uses Dorado as the default design',()=>{
- assert.deepEqual(designs.map(d=>d.name),['Dorado','Aqua Shade','Calstar Grafighter','Zarape']);
- assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,82]);
+ assert.deepEqual(designs.map(d=>d.name),['Dorado','Aqua Shade','Calstar Grafighter','Zarape','Shadow Fade']);
+ assert.deepEqual(designs.map(d=>d.bands.length),[13,7,13,82,49]);
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
+});
+
+test('Shadow Fade trades black for grey with single-turn white inlays and real ProWrap threads',()=>{
+ const design=designs.find(d=>d.name==='Shadow Fade');
+ const catalog=JSON.parse(fs.readFileSync('assets/catalog.json','utf8')).items;
+ for(let i=0;i<12;i++){
+  const block=design.bands.slice(i*4,i*4+4);
+  assert.deepEqual(block.map(b=>b.sku),['RNS-D-862','RNS-D-807','RNS-D-819','RNS-D-807']);
+  assert.deepEqual(block.map(b=>b.turns),[12-i,1,i+1,1]);
+ }
+ assert.equal(design.bands.at(-1).sku,'RNS-D-819');
+ assert.equal(design.bands.at(-1).turns,13);
+ for(const band of design.bands){
+  const item=catalog.find(t=>t.sku===band.sku);
+  assert.ok(item);
+  assert.equal(band.brand,'ProWrap');
+  assert.equal(band.line,'Nylon');
+  assert.equal(band.name,item.name);
+  assert.equal(band.source,item.source);
+  assert.equal(band.wrap,undefined);
+ }
+ assert.equal(new Set(design.bands).size,49);
+ assert.equal(wrapSummary(design.bands,design.coverage,design.diameter).length,48.25);
 });
 
 test('design validation retains independent quick palettes and accepts older designs',()=>{

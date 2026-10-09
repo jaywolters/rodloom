@@ -23,6 +23,8 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
  const red=nylon('325 Fire Red','#bf1235','regular','325','34440556544133');
  const yellow=nylon('122 Neon Yellow','#e9fa20','neon','122','34440556183685');
  const dark=nylon('862 Twilight Black','#16151a','regular','862','34440558674053');
+ const trimWhite=nylon('807 White','#e8e7e2','regular','807','34440558379141');
+ const ghostGrey=nylon('819 Ghost Grey','#999a98','regular','819','34440558444677');
  const solid=(t,turns)=>({...t,turns});
  // Symmetric 26-thread-width fades: gradually trade solid turns for paired
  // turns, then back again. Avoid a long, visibly striped 50/50 plateau.
@@ -89,5 +91,13 @@ window.RODLOOM_STANDARD_DESIGNS = (() => {
   ...fade(pink,bubblegum),solid(bubblegum,2),solid(yellow,1),solid(orange,6),
   ...fade(orange,red),solid(red,3),...fade(red,dark),solid(dark,4),
   ...pinkTrim(),solid(dark,5),...fade(dark,cyan),solid(cyan,9)
- ]},250))];
+ ]},250)),
+ {version:1,name:'Shadow Fade',coverage:0.25,diameter:15,blank:'#101314',texture:true,bands:[
+  // Trade one black turn for one grey turn per block, retaining white inlays.
+  ...Array.from({length:12},(_,i)=>[
+   solid(dark,12-i),solid(trimWhite,1),solid(ghostGrey,i+1),solid(trimWhite,1)
+  ]).flat(),
+  // Fully grey endpoint: no zero-turn black band or doubled white trim.
+  solid(ghostGrey,13)
+ ]}];
 })();
