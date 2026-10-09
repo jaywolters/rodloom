@@ -26,7 +26,7 @@ function editor(){
  const $=id=>elements[id]??=(new Element());
  $('bands').details={open:false};
  const state={name:'Test',bands:['A','B','C'].map(name=>({name,color:'#123456',turns:1}))};
- const context=vm.createContext({state,$,history:[],selectedBands:new Set(),bandClipboard:[],make:(tag,cls,text)=>Object.assign(new Element(cls),{textContent:text}),refresh(){},notify(){},Option:Element,structuredClone,isCatalogThread:()=>true});
+ const context=vm.createContext({state,$,history:[],selectedBands:new Set(),bandClipboard:[],make:(tag,cls,text)=>Object.assign(new Element(cls),{textContent:text}),refresh(){},notify(){},Option:Element,structuredClone,validColor:()=>true,isCatalogThread:()=>true});
  const source=fs.readFileSync('app.js','utf8');
  vm.runInContext(source.slice(source.indexOf('function updateBlockControls(){'),source.indexOf('function refresh(){'))+source.slice(source.indexOf('function addBand('),source.indexOf("$('mirror').onclick")),context);
  context.change=fn=>{context.history.push(structuredClone(context.state));fn();context.render();};
@@ -159,6 +159,47 @@ test('block paste preserves nested spirals and rejects overflow without a partia
  context.state=structuredClone(state);context.render();
  assert.equal(context.selectedBands.size,0);
  assert.equal(context.$('paste-bands').disabled,true);
+});
+
+test('palette replacement preserves turns, selection, and spiral geometry with one undo snapshot',()=>{
+ const {context,state}=editor();
+ context.insertSpiral(0);
+ const solid=state.bands[0],spiral=state.bands[1],untouched=structuredClone(state.bands[2]);
+ solid.turns=12;solid.source='old source';
+ context.selectedBands.add(solid);context.selectedBands.add(spiral);
+ const replacement={name:'White',color:'#ffffff',brand:'ProWrap',sku:'RNS-D-807',catalog:true,finish:'regular',line:'Nylon'};
+ const before=JSON.stringify(state),count=context.history.length;
+ assert.equal(context.replaceSelectedBands(replacement),true);
+ assert.equal(context.history.length,count+1);
+ assert.equal(JSON.stringify(context.history.at(-1)),before);
+ assert.equal(solid.turns,12);assert.equal(solid.name,'White');assert.equal(solid.source,undefined);
+ assert.equal(spiral.name,'A');assert.equal(spiral.secondary.name,'White');
+ assert.equal(spiral.turns,5);assert.equal(spiral.direction,1);assert.equal(spiral.wrap,'spiral');
+ assert.deepEqual(state.bands[2],untouched);
+ assert.equal(context.selectedBands.size,2);
+ assert.notEqual(spiral.secondary,replacement);
+ context.selectedBands.clear();
+ assert.equal(context.replaceSelectedBands(replacement),false);
+ assert.equal(context.history.length,count+1);
+});
+
+test('select same color matches catalog threads, supports multiple colors, and makes no undo entry',()=>{
+ const {context,state}=editor();
+ const thread=(sku,line='Nylon')=>({name:sku,brand:'ProWrap',line,sku,color:'#123456',turns:1});
+ state.bands=[thread('black'),thread('white'),thread('black'),thread('grey'),thread('black','ColorFast'),
+  {...thread('grey'),wrap:'spiral',secondary:thread('black'),direction:1},
+  {...thread('black'),wrap:'spiral',secondary:thread('grey'),direction:1}];
+ context.render();
+ assert.equal(context.$('select-same-color').disabled,true);
+ context.selectedBands.add(state.bands[0]);context.render();
+ assert.equal(context.$('select-same-color').disabled,false);
+ context.$('select-same-color').onclick();
+ assert.deepEqual([...context.selectedBands],[state.bands[0],state.bands[2],state.bands[5]]);
+ context.selectedBands.add(state.bands[1]);context.selectSameColor();
+ assert.deepEqual([...context.selectedBands],[state.bands[0],state.bands[1],state.bands[2],state.bands[5]]);
+ assert.equal(context.history.length,0);
+ context.$('clear-band-selection').onclick();
+ assert.equal(context.$('select-same-color').disabled,true);
 });
 
 test('cloning respects the design band limit',()=>{

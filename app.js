@@ -124,9 +124,39 @@ function change(fn){checkpoint();fn();render();}
 function make(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
 function updateBlockControls(){
  $('copy-bands').disabled=!selectedBands.size;
+ $('select-same-color').disabled=!selectedBands.size;
  $('clear-band-selection').disabled=!selectedBands.size;
  $('paste-bands').disabled=!bandClipboard.length||state.bands.length+bandClipboard.length>100;
  $('block-status').textContent=`${selectedBands.size} selected · ${bandClipboard.length} copied`;
+}
+function selectSameColor(){
+ // Match catalog identity rather than approximate RGB, using the same visible
+ // incoming thread that Replace selected targets for paired spirals.
+ const key=b=>{const t=b.wrap==='spiral'?b.secondary:b;return JSON.stringify([t.brand,t.line||'',t.sku]);};
+ const colors=new Set(state.bands.filter(b=>selectedBands.has(b)).map(key));
+ if(!colors.size)return;
+ selectedBands=new Set(state.bands.filter(b=>colors.has(key(b))));
+ render();
+ notify(`Selected ${selectedBands.size} bands with matching thread colors.`);
+}
+function replaceSelectedBands(thread){
+ const targets=state.bands.filter(b=>selectedBands.has(b));
+ if(!targets.length){notify('Select thread bands to replace first.');return false;}
+ if(!isCatalogThread(thread)||!validColor(thread.color))return false;
+ // Replace catalog metadata as well as preview color, retaining wrap geometry.
+ const {turns,wrap,secondary,direction,...color}=thread;
+ change(()=>{
+  for(const band of targets){
+   if(band.wrap==='spiral')band.secondary={...structuredClone(color),...(band.secondary.turns!==undefined?{turns:band.secondary.turns}:{})};
+   else{
+    const geometry={turns:band.turns,...(band.wrap?{wrap:band.wrap}:{})};
+    for(const key of Object.keys(band))delete band[key];
+    Object.assign(band,structuredClone(color),geometry);
+   }
+  }
+ });
+ notify(`Replaced ${targets.length} selected bands with ${thread.name}.`);
+ return true;
 }
 function copySelectedBands(){
  if(!selectedBands.size)return;
@@ -147,6 +177,7 @@ function pasteBands(){
 function render(){
  selectedBands=new Set([...selectedBands].filter(b=>state.bands.includes(b)));
  $('copy-bands').onclick=copySelectedBands;
+ $('select-same-color').onclick=selectSameColor;
  $('paste-bands').onclick=pasteBands;
  $('clear-band-selection').onclick=()=>{selectedBands.clear();render();};
  updateBlockControls();

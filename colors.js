@@ -81,7 +81,11 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    const favorite=contains('favorites',value);
    const star=action(`${favorite?'Unfavorite':'Favorite'} ${value.name}`,favorite?'★':'☆',()=>toggle('favorites',value),`${section}-star-${identity}`);
    star.setAttribute('aria-pressed',String(favorite));row.append(star);
-   if(section==='quick')row.append(action(`Remove ${value.name} from this design's quick palette`,'×',()=>toggle('quick',value),`${section}-remove-${identity}`));
+   if(section==='quick'){
+    const replace=action(`Replace selected bands with ${value.name} (incoming color for paired spirals)`,'⇄',()=>replaceSelectedBands(value),`${section}-replace-${identity}`);
+    replace.className='color-action color-replace';row.append(replace);
+    row.append(action(`Remove ${value.name} from this design's quick palette`,'×',()=>toggle('quick',value),`${section}-remove-${identity}`));
+   }
    else{
     const collected=contains('quick',value);
     const collect=action(`${collected?'Remove':'Collect'} ${value.name} ${collected?'from':'in'} this design's quick palette`,collected?'✓ Palette':'+ Palette',()=>toggle('quick',value),`${section}-collect-${identity}`);

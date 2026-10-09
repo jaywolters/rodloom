@@ -169,6 +169,7 @@ summary:hover{color:var(--blue)}
 .saved-color-label small{font-size:9px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .color-action{flex-shrink:0;background:transparent;border:0;font-size:17px;line-height:1;padding:6px;width:28px;height:28px;color:var(--muted)}
 .color-action[aria-pressed=true]{color:var(--blue)}
+.color-replace{font-size:18px}
 .color-collect{width:auto;font-size:10px;white-space:nowrap;padding:6px}
 .color-empty{font-size:11px;line-height:1.6;padding:3px 2px;max-width:60ch}
 .color-storage-status{padding:6px 10px;border-top:1px solid var(--line);font-size:10px;color:var(--blue)}
