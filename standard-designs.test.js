@@ -17,6 +17,18 @@ test('built-in library uses Dorado as the default design',()=>{
  for(const design of designs)assert.doesNotThrow(()=>context.validate(design));
 });
 
+test('design validation retains independent quick palettes and accepts older designs',()=>{
+ const thread=designs[0].bands[0];
+ const design={...designs[0],quickColors:[thread]};
+ const restored=context.validate(JSON.parse(JSON.stringify(design)));
+ assert.equal(restored.quickColors[0].sku,thread.sku);
+ assert.notEqual(restored.quickColors[0],thread);
+ assert.equal(context.validate(designs[0]).quickColors,undefined);
+ for(const quickColors of [null,{},[{}],[{...thread,color:'red'}],Array(501).fill(thread)]){
+  assert.throws(()=>context.validate({...design,quickColors}),/Invalid quick palette/);
+ }
+});
+
 test('Zarape uses only Fuji and ProWrap catalog threads and stays within the band limit',()=>{
  const design=designs.find(d=>d.name==='Zarape');
  assert.equal(design.texture,true);

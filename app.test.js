@@ -28,7 +28,7 @@ function editor(){
  const state={name:'Test',bands:['A','B','C'].map(name=>({name,color:'#123456',turns:1}))};
  const context=vm.createContext({state,$,history:[],make:(tag,cls,text)=>Object.assign(new Element(cls),{textContent:text}),refresh(){},notify(){},Option:Element,structuredClone,isCatalogThread:()=>true});
  const source=fs.readFileSync('app.js','utf8');
- vm.runInContext(source.slice(source.indexOf('function render(){'),source.indexOf('function refresh(){'))+source.slice(source.indexOf('function addBand(b){'),source.indexOf("$('mirror').onclick")),context);
+ vm.runInContext(source.slice(source.indexOf('function render(){'),source.indexOf('function refresh(){'))+source.slice(source.indexOf('function addBand('),source.indexOf("$('mirror').onclick")),context);
  context.change=fn=>{fn();context.render();};
  context.render();
  return {context,state,list:$('bands')};
@@ -37,7 +37,7 @@ const names=list=>list.children.map(row=>row.children[2].children[0].value);
 
 function blankDesignEditor(unsaved){
  const result=editor(),{context}=result;
- Object.assign(context.state,{coverage:.25,diameter:15,blank:'#222222',texture:true});
+ Object.assign(context.state,{coverage:.25,diameter:15,blank:'#222222',texture:true,quickColors:[{name:'Working red'}]});
  context.hasUnsavedChanges=()=>unsaved;
  context.confirmAction=()=>{throw Error('Blank design should clear immediately without a confirmation dialog');};
  context.markClean=()=>{context.cleaned=true;};
@@ -60,6 +60,8 @@ test('new blank design clears colors, preserves dimensions, and keeps an undo sn
  assert.equal(context.state.blank,'#101314');
  assert.equal(context.state.texture,true);
  assert.equal(context.history[0].bands.length,3);
+ assert.equal(context.state.quickColors.length,0);
+ assert.equal(context.history[0].quickColors.length,1);
  assert.equal(context.cleaned,true);
  assert.equal(context.prompted,undefined);
  assert.equal(context.$('design-name').focused,true);
@@ -99,6 +101,32 @@ test('editor displays reversed wrap order and new colors at the top',()=>{
  assert.deepEqual(names(list),['D','C','B','A']);
  assert.deepEqual(state.bands.map(b=>b.name),['A','B','C','D']);
  assert.equal(list.firstElementChild.scrolled.block,'start');
+});
+
+test('palette additions can keep the current viewport instead of scrolling to bands',()=>{
+ const {context,list}=editor();
+ assert.equal(context.addBand({name:'D',color:'#123456',turns:10},{reveal:false}),true);
+ assert.equal(list.firstElementChild.scrolled,undefined);
+});
+
+test('cloning a band preserves turns and independently copies a paired spiral',()=>{
+ const {context,state,list}=editor();
+ context.insertSpiral(0);
+ state.bands[1].turns=13;
+ list.children[2].children[4].children[3].onclick();
+ const clone=state.bands.at(-1),original=state.bands[1];
+ assert.deepEqual(clone,structuredClone(original));
+ assert.notEqual(clone,original);
+ assert.notEqual(clone.secondary,original.secondary);
+ clone.secondary.name='Independent';
+ assert.equal(original.secondary.name,'B');
+});
+
+test('cloning respects the design band limit',()=>{
+ const {context,state}=editor();
+ state.bands=Array.from({length:100},()=>({name:'A',color:'#123456',turns:1}));
+ assert.equal(context.addBand(state.bands[0]),false);
+ assert.equal(state.bands.length,100);
 });
 
 test('move arrows follow visible order with correct edge disabling',()=>{

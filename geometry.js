@@ -27,7 +27,8 @@ function wrapSummary(bands, coverage, diameter) {
  }, {turns:0, length:0, threadLength:0});
 }
 // Advance along the blank over the visible front half (rod), or a full unrolled turn.
-function spiralAdvance(fraction, pitch, flat, direction = 1) {
- return direction * pitch * (flat ? fraction : .25 + Math.asin(2 * fraction - 1) / (2 * Math.PI));
+function spiralAdvance(fraction, pitch, flat, direction = 1, phase = 0) {
+ // Rotate the visible face by a fraction of a revolution without reversing wrap order.
+ return direction * pitch * (phase + (flat ? fraction : .25 + Math.asin(2 * fraction - 1) / (2 * Math.PI)));
 }
 if (typeof module !== 'undefined') module.exports = {wrapGeometry, bandMetrics, wrapSummary, spiralAdvance};

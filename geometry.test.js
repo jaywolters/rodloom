@@ -17,6 +17,11 @@ test('Helix advances half a pitch on the visible hemisphere, full pitch unrolled
  near(spiralAdvance(.5,.5,false),.125);near(spiralAdvance(1,.5,true),.5);
  near(spiralAdvance(1,.5,true,-1),-.5);
 });
+for(const phase of [.25,.5])test(`${phase===.25?'Side':'Top'} shifts spirals without reversing their direction`,()=>{
+ for(const flat of [false,true])for(const direction of [1,-1])for(const fraction of [0,.25,.5,.75,1]){
+  near(spiralAdvance(fraction,.5,flat,direction,phase)-spiralAdvance(fraction,.5,flat,direction),direction*.5*phase);
+ }
+});
 for(const screenScale of [2,3.78,6]) test(`Calibrated actual size at ${screenScale} px/mm`,()=>{
  const g=wrapGeometry({turns:40,coverage:.25,diameter:15,width:800,height:280,screenScale});
  near(g.blankHeight,15*screenScale);
