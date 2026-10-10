@@ -1,82 +1,62 @@
 # Rod Loom
 
-A local browser workbench for designing banded fishing-rod thread wraps and paired spiral fade transitions.
+A browser workbench for designing fishing-rod thread wraps with solid bands and paired spiral fades.
 
-## Open
+**[Open Rod Loom](https://main.dnpxbg1xuqcc.amplifyapp.com)**
 
-Run `python server.py` in this folder and visit http://localhost:8000. Python 3 is sufficient; no packages or build required. The catalog and all swatch images are bundled locally, so `python -m http.server` also works. Opening `index.html` directly still supports custom designs, but not the retailer catalog.
+## Design a wrap
 
-## Hosted deployment
+1. Choose a pattern from **Design library**, or start a blank design.
+2. Collect Fuji and ProWrap Size D threads from **Thread catalog** into your **Quick palette**. Use stars to keep favorites across designs.
+3. Click a quick-palette color to add a band. Adjust turns in **Thread bands**; drag to reorder, clone, copy/paste blocks, reverse, mirror, or undo.
+4. Select bands to show the **⇄ Replace** buttons before quick-palette color chips. For paired spirals, replacement changes the incoming thread.
+5. Add **Spiral into next color** between neighboring solid bands to create a paired fade transition.
 
-The website is hosted on AWS Amplify. The catalog and swatches are static bundled assets; the legacy Lambda/HTTP API is no longer used by the frontend. See [DEPLOY.md](DEPLOY.md) for the live URL, GitHub connection step, and deployment instructions. Local Python development remains supported.
+**Design colors** buttons and band color chips collect and highlight threads in Quick palette without adding bands. Clicking the preview reveals the corresponding band.
 
-## Features
+## Preview and export
 
-- Compact, Photoshop-inspired workspace with a neutral dark default, light/auto themes, docked color tools, and a larger preview
-- Reusable design swatches, a per-design quick palette, and persistent favorite colors
-- Shaded rod and flat previews with individual turns
-- Regular, metallic, and neon finishes per band
-- Neon yellow and neon green planning swatches
-- Searchable Fuji / ProWrap size D retailer catalog with product-photo swatches, codes, SKUs, and thread-line filters
-- Band turn counts, drag reorder, mirror, reverse, and undo
-- Two-thread spiral fade transitions with independent colors/finishes, direction, and finished paired-turn counts
-- Clearly labeled 4× inspection mode for fine spiral detail
-- Adjustable thread coverage and blank diameter
-- Wrap dimensions, approximate thread consumption, and printable recipe
-- Browser draft autosave and a named LocalStorage design library with save, open, and delete
-- JSON import/export for backups and PNG export
+- Shaded rod and flat layouts, with Bottom, Side, and Top views.
+- Calibrated actual size, Fit to window, and 1×–8× zoom.
+- Adjustable thread coverage and blank diameter under **Display scale & calibration**.
+- PNG export and a printable wrapping recipe with dimensions and estimated thread usage.
+- JSON import/export for backups and sharing.
 
-## Important limitations
+To calibrate actual size, measure the 50 mm reference line, enter its measured length, and apply calibration. Recalibrate after changing browser zoom or monitors.
 
-Catalog names, codes, SKUs, size D variants, photos, and stock flags come from Mud Hole's public Shopify product JSON, not a manufacturer API. Preview RGB colors are automatically approximated from product photos and may sample spool/label/shadow colors incorrectly; edit the swatch as needed and consult physical charts. Metallic reflections and neon saturation are illustrative. Finish, color preserver, the blank, and lighting affect actual results. Older saved planning bands remain marked unverified.
+## Browser saves
 
-The catalog snapshot lives in `assets/catalog.json`; all 120-pixel swatches are stored in `assets/swatches/` and included in the frontend build. Page views and normal builds make no retailer image or catalog requests and have no remote image fallback. Stock reflects the snapshot, not real-time availability. To explicitly refresh the six fixed product catalogs (ProWrap ColorFast/Nylon/Metallic and Fuji Ultra Poly/NOCP/Metallic) and download their photos, run `python scripts/localize_catalog.py`, review and commit the updated assets, then rebuild/redeploy. The maintenance script reuses `.catalog-cache/` when possible and leaves the previous manifest intact if an image download fails. Review retailer terms and obtain permission as needed before publishing or broadly redistributing catalog content. The local server binds to loopback only.
+The current draft autosaves locally. **Save design** creates a named snapshot in Design library; editing the draft does not update that snapshot. Quick palettes belong to their designs, while favorites remain available across designs.
 
-The initial size D coverage of 0.25 mm/turn is an editable estimate, not a universal specification. Measure the width of a test wrap and divide by its turn count. Metallic threads may pack differently; this version uses one coverage value for the whole design.
+Panel expansion states are restored from the last session; Thread catalog starts collapsed on a fresh visit. Light, dark, and automatic themes are available. Catalog **Auto gray** keeps swatches muted until hover or keyboard focus; touch devices always show color.
 
-Thread usage estimates a helix around the blank plus one thread-width diameter allowance. It excludes tag ends, waste, guide feet, taper, and finish buildup. The preview uses the same pixels-per-mm scale on both axes, auto-fitting without distortion. Rod view includes approximate thread buildup (coverage used as thread thickness); flat view unrolls the circumference at the thread centerline. Individual turns are hidden when too small to resolve rather than exaggerated. PNG exports use the same geometry. Actual-size mode is the default. Measure the 50 mm reference line with a physical ruler, enter its measured length, and click Apply calibration. Measure again to confirm it is now 50 mm. You can also adjust CSS pixels/mm directly; the default of 3.25 is only an initial estimate, not a detected monitor density. Display settings and the “At your bench” coverage/diameter controls are tucked into the collapsed “Display scale & calibration” section. Other monitors require calibration. Calibration stays in this browser and must be repeated after changing zoom or monitors. Bottom view shows the side where colors start and end; Top shows the opposite face, shifting paired spirals half a revolution without changing wrapping order. Side shows a quarter-revolution (90°) rotation from Bottom. Solid bands look the same from all three sides. These controls also choose the seam for Flat layout and the side used in image exports. The Zoom slider ranges from 1× (calibrated actual size) to 8×; zooming does not change calibration. The preview scrolls horizontally when Actual size or zoomed wraps are wider than the panel, but never vertically. Tall previews and wraps beyond the 4000 CSS-pixel canvas limit are clipped; use Fit to window to see the whole pattern. Fit mode and PNG exports preserve proportions but are not physical life-size. Print output is not calibrated. Mirror appends a full reversed copy, including the last band.
+Design data stays in your browser. Clearing site data removes local saves, so export JSON for durable backups.
 
-This version supports straight bands and tightly packed two-thread spirals, not open-pitch spirals, cross-wraps, diamonds, or weaving. Browser storage depends on browser permissions; download JSON for durable backups. The interface uses local system fonts and makes no external font requests. Design data is not uploaded.
+## Accuracy
 
-## Saved designs
+Catalog photos, product details, and stock flags are bundled snapshots from Mud Hole. Preview colors are estimates sampled from photos; use physical thread charts for color decisions. Metallic and neon rendering is illustrative.
 
-Name your design and click **Save design** to store a snapshot in this browser's LocalStorage. Saving the same name asks before replacing it; use a different name to keep another version. Use **Design library** to open or delete snapshots. Editing and autosave update only the current draft, not saved snapshots. Browser storage is local to this browser and site and can be cleared; use **Export JSON** for durable backups or **Import JSON** to open a downloaded design.
+The initial 0.25 mm thread coverage is an editable estimate. Measure a test wrap for your thread. Dimensions and thread usage are planning estimates; usage excludes setup turns, tag ends, and waste. Paired spiral counts represent finished paired revolutions. Fit, PNG exports, and printed recipes are not calibrated life-size.
 
-## Color workspace
+## Run locally
 
-- **Design colors** shows each unique thread in the current design, including both colors of paired spirals. Click a swatch to collect and highlight that thread in **Quick palette**, without adding a band. **Clone to palette** collects all of them without changing the bands.
-- **Auto gray** in the thread catalog is on by default: catalog swatches turn gray when the mouse is elsewhere, and regain color on hover or keyboard focus. Toggle it off to keep colors visible. The preference is saved in this browser; touch devices always show full color.
-- In the **Thread catalog**, click a thread image or **+ Palette** on as many threads as you like. This collects colors into the current design’s quick palette without adding bands or leaving the lookup. Clicking an already-collected image keeps it in the palette. The checked Palette button removes a thread from the quick palette.
-- **Quick palette** is the current design’s working set. A new blank design starts with an empty palette; opening a saved design restores its palette. Click any color in **Quick palette** to add a solid band (10 turns, or 5 for metallic). Set its turns in **Thread bands**. Collecting from the catalog and adding bands from a palette keep your browsing position.
-- Click **☆** in the catalog or quick palette to keep a thread in **Favorites**. Favorites are individual colors, separate from saved designs and appearance themes. Click **★** to unfavorite. Use **+ Palette** in Favorites to collect a thread for the current design without adding a band. Removing a quick-palette color does not remove its favorite or any existing bands.
-- The **⧉** button on a band clones the complete band, including its turns and both strands of a spiral. Undo removes the duplicate.
+Requires Python 3 and no installed packages:
 
-Favorites remain available across new designs and page reloads in this browser; they are separate from design Undo and JSON exports. The quick palette belongs to the design: it autosaves with the draft, is included in saved designs and JSON exports, and supports Undo. Existing shared quick palettes are moved into the current draft on upgrade. Threads retain their brand, line, SKU, finish, and approximate preview color; different products with identical RGB values remain distinct. Each collection has a 500-thread limit. If browser storage fails, a status message warns that changes cannot be saved. Clearing site data removes browser saves.
+```sh
+python server.py
+```
 
-## Spiral transitions
+Open http://localhost:8000. Catalog data and swatches are bundled in `assets/`.
 
-Following [Mud Hole's alternative fade technique](https://mudhole.com/blogs/tips-tricks/alternative-fade-wraps), click the thin **Spiral into next color** button on the top divider of a solid band, between it and the next color above to insert a transition using it and the next solid band's colors. It defaults to five finished paired revolutions. Both colors are copied, so later edits to neighboring bands do not silently change the transition. You can edit each thread's color/finish, the second thread's name, turn count, and spiral direction.
+## Test and build
 
-At 0.25 mm coverage, two threads advance 0.50 mm per rod revolution; five paired revolutions cover 2.50 mm. They are side by side, not stacked. The recipe calls for one additional setup pair before backing off one turn of the outgoing color and securing it under the incoming color. Dimensions model the finished, burnished transition; actual tie-off geometry varies. Thread consumption includes both helices but excludes setup turns, tag ends, and waste. The total-revolution count also excludes setup turns.
+Requires Node.js:
 
-The preview projects helices onto the visible half of the rod; Flat layout unwraps the whole circumference. Physical spiral angles are slight on a 15 mm blank—no artificial thickening or exaggerated slant is applied. **Inspect 4×** magnifies the calibrated view; click **Actual size** to return. Large views scroll. Reverse and Mirror swap a transition's thread order and reverse its spiral direction. Save/open, autosave, PNG export, printing, and Undo include spiral sections. Older solid-band designs still load.
+```sh
+node --test
+node scripts/build.mjs
+```
 
-## Search discovery and sharing
+The build produces the static site in `dist/`. See [DEPLOY.md](DEPLOY.md) for publishing instructions.
 
-`index.html` includes a descriptive title, search description, canonical URL, indexing directives, Open Graph and Twitter sharing tags, and Schema.org WebSite/WebPage/WebApplication structured data. `robots.txt` advertises `sitemap.xml`; `favicon.svg` provides the site icon.
-
-Production URLs assume **https://rodloom.com/**. If the domain changes, update the canonical and social URLs, structured-data URLs and IDs, sitemap URL, and robots sitemap directive together. Serve the site publicly over HTTPS, redirect HTTP and alternate hostnames to the canonical host, and ensure `/`, `/robots.txt`, `/sitemap.xml`, and `/favicon.svg` return successfully. The current Python server is local-only; metadata alone does not publish the site.
-
-After launch, verify domain ownership in Google Search Console and Bing Webmaster Tools and submit `https://rodloom.com/sitemap.xml`. Validate structured data with Schema.org's validator and inspect the live URL in Search Console. A real, publicly hosted social preview image can be added later with `og:image` and `twitter:image` tags. Metadata supports discovery and accurate presentation; it does not guarantee indexing or higher rankings.
-
-## Check
-
-`node --check app.js`
-
-`node --check catalog.js`
-
-`node --test *.test.js`
-
-`node scripts/build.mjs`
-
-`python -m py_compile server.py`
+To refresh catalog assets, run `python scripts/localize_catalog.py`, review and commit the changes, then rebuild. Review retailer terms before redistributing catalog content.
