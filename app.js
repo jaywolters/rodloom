@@ -103,7 +103,7 @@ async function canReplaceDesign(){
 }
 function notify(text){$('toast').textContent=text;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
 function checkpoint(){history.push(structuredClone(state));if(history.length>50)history.shift();}
-function persist(){try{localStorage.setItem('threadwrap-design',JSON.stringify(state));$('storage-status').textContent='Current draft autosaved in this browser';return true;}catch{$('storage-status').textContent='Browser storage unavailable — use Export';return false;}}
+function persist(){try{localStorage.setItem('threadwrap-design',JSON.stringify(state));return true;}catch{notify('Browser storage unavailable — use Export to save your design.');return false;}}
 const libraryKey='threadwrap-designs';
 function readLibrary(){
  const raw=localStorage.getItem(libraryKey);
@@ -174,6 +174,27 @@ function pasteBands(){
  $('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
  notify(`Pasted ${bandClipboard.length} bands at the end of the wrap. Adjust their turns below.`);
 }
+function revealPreviewBand(event){
+ const canvas=$('preview'),rect=canvas.getBoundingClientRect();
+ if(!rect.width||!rect.height)return;
+ const x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+ const hit=canvas.bandRegions?.find(region=>x>=region.left&&x<region.right&&y>=region.top&&y<=region.bottom);
+ if(!hit)return;
+ const list=$('bands'),row=[...list.children].find(row=>Number(row.dataset.index)===hit.index);
+ if(!row)return;
+ list.closest('details').open=true;
+ list.querySelectorAll('.preview-highlight').forEach(row=>row.classList.remove('preview-highlight'));
+ row.classList.add('preview-highlight');
+ row.querySelector('.turns').focus({preventScroll:true});
+ row.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+}
+function bandColorChip(thread,label){
+ const chip=make('button','band-color-chip');chip.type='button';chip.style.background=thread.color;
+ chip.setAttribute('aria-label',`${label}: show ${thread.name} in Quick palette`);
+ chip.title=`Show ${thread.name} in Quick palette`;
+ chip.onclick=()=>globalThis.colorWorkspace?.revealQuick(thread);
+ return chip;
+}
 function render(){
  selectedBands=new Set([...selectedBands].filter(b=>state.bands.includes(b)));
  $('copy-bands').onclick=copySelectedBands;
@@ -193,7 +214,7 @@ function render(){
   handle.addEventListener('pointerdown',event=>startBandDrag(event,i,handle));row.append(handle);
   // Match the bottom-to-top list: incoming thread above outgoing thread.
   const upper=b.wrap==='spiral'?b.secondary:b;
-  const color=make('input');color.type='color';color.value=upper.color;color.setAttribute('aria-label',`Band ${i+1} ${b.wrap==='spiral'?'incoming thread ':''}color`);color.disabled=true;color.title='Catalog preview color (approximate)';
+  const color=bandColorChip(upper,`Band ${i+1} ${b.wrap==='spiral'?'incoming thread ':''}color`);
   const details=make('div','band-details');const name=make('input','name');name.value=upper.name;name.maxLength=80;name.setAttribute('aria-label',`Band ${i+1} ${b.wrap==='spiral'?'incoming ':''}thread name`);name.readOnly=true;
   details.append(name);if(upper.brand){const brand=make('small','brand-note',upper.catalog?`${upper.brand} · ${upper.line || ''} · ${upper.sku || ''}`:`${upper.brand} · match unverified`);details.append(brand);}
   const turns=make('input','turns');turns.type='number';turns.min=1;turns.max=1000;turns.step=1;turns.value=b.turns;turns.setAttribute('aria-label',`Band ${i+1} turns`);turns.addEventListener('change',()=>{if(!turns.checkValidity()||!turns.value){turns.reportValidity();turns.value=b.turns;return;}change(()=>b.turns=Number(turns.value));});
@@ -206,7 +227,7 @@ function render(){
    row.classList.add('spiral-band');
    const paired=make('div','spiral-editor');
    paired.append(make('strong','spiral-label','Paired spiral · finished turns'));
-   const second=make('input');second.type='color';second.value=b.color;second.setAttribute('aria-label',`Band ${i+1} outgoing thread color`);second.disabled=true;second.title='Catalog preview color (approximate)';
+   const second=bandColorChip(b,`Band ${i+1} outgoing thread color`);
    const secondName=make('input','name');secondName.value=b.name;secondName.maxLength=80;secondName.setAttribute('aria-label',`Band ${i+1} outgoing thread name`);secondName.readOnly=true;
    const direction=make('select','finish');direction.setAttribute('aria-label',`Band ${i+1} spiral direction`);direction.append(new Option('Spiral /','1'),new Option('Spiral \\','-1'));direction.value=b.direction;direction.onchange=()=>change(()=>b.direction=Number(direction.value));
    paired.append(second,secondName,direction);
@@ -310,6 +331,7 @@ function reflectedBand(b){
 }
 function draw(target=$('preview'),exporting=false){
  const stage=$('preview').parentElement;
+ if(!exporting)target.bandRegions=[];
  const actual=!exporting&&displayScale!=='fit';
  const viewScale=screenScale*zoom;
  if(!exporting)$('preview').setAttribute('aria-label',`${rodSide[0].toUpperCase()+rodSide.slice(1)} ${mode==='flat'?'flat layout':'rod view'} of your thread wrapping pattern`);
@@ -336,7 +358,8 @@ function draw(target=$('preview'),exporting=false){
   return;
  }
  let x=left;
- state.bands.forEach(b=>{const bw=bandMetrics(b,state.coverage,state.diameter).length*pixelsPerMm;
+ state.bands.forEach((b,index)=>{const bw=bandMetrics(b,state.coverage,state.diameter).length*pixelsPerMm;
+  if(!exporting)target.bandRegions.push({index,left:x/w,right:(x+bw)/w,top:top/h,bottom:(top+height)/h});
   if(b.wrap==='spiral'){drawSpiral(ctx,b,x,top,bw,height,pixelsPerMm);x+=bw;return;}
   ctx.fillStyle=b.color;ctx.fillRect(x,top,bw,height);
   if(mode==='rod'){const shade=ctx.createLinearGradient(0,top,0,top+height);shade.addColorStop(0,'#0008');shade.addColorStop(.24,b.finish==='metallic'?'#ffffffbb':'#ffffff35');shade.addColorStop(.42,'#ffffff08');shade.addColorStop(1,'#0009');ctx.fillStyle=shade;ctx.fillRect(x,top,bw,height);}
@@ -437,4 +460,6 @@ $('designer-view').onclick=()=>showView(false);
 $('recipe-view').onclick=()=>showView(true);
 $('print').onclick=$('pdf').onclick=()=>{updateRecipeImage();window.print();};
 window.addEventListener('beforeprint',updateRecipeImage);
+$('preview').onclick=revealPreviewBand;
+$('preview').title='Click a thread color to find its band in Thread bands';
 new ResizeObserver(()=>{if(!$('designer').hidden)draw();}).observe($('preview').parentElement);render();updateScreenScale();renderLibrary();

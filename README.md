@@ -44,7 +44,7 @@ Name your design and click **Save design** to store a snapshot in this browser's
 
 ## Color workspace
 
-- **Design colors** shows each unique thread in the current design, including both colors of paired spirals. Click a swatch to add that thread again. **Clone to palette** collects all of them without changing the design.
+- **Design colors** shows each unique thread in the current design, including both colors of paired spirals. Click a swatch to collect and highlight that thread in **Quick palette**, without adding a band. **Clone to palette** collects all of them without changing the bands.
 - **Auto gray** in the thread catalog is on by default: catalog swatches turn gray when the mouse is elsewhere, and regain color on hover or keyboard focus. Toggle it off to keep colors visible. The preference is saved in this browser; touch devices always show full color.
 - In the **Thread catalog**, click a thread image or **+ Palette** on as many threads as you like. This collects colors into the current design’s quick palette without adding bands or leaving the lookup. Clicking an already-collected image keeps it in the palette. The checked Palette button removes a thread from the quick palette.
 - **Quick palette** is the current design’s working set. A new blank design starts with an empty palette; opening a saved design restores its palette. Click any color in **Quick palette** to add a solid band (10 turns, or 5 for metallic). Set its turns in **Thread bands**. Collecting from the catalog and adding bands from a palette keep your browsing position.

@@ -33,7 +33,7 @@
 
 if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
  const colors=window.ThreadColors,storageKey='rodloom-colors-v1';
- let library={quick:[],favorites:[]};
+ let library={quick:[],favorites:[]},highlightedQuick=null;
  function storageWarning(message){$('color-storage-status').hidden=!message;$('color-storage-status').textContent=message;}
  function load(){
   try{library=colors.decode(localStorage.getItem(storageKey));storageWarning('');}
@@ -61,6 +61,17 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    $(`${name}-colors-panel`).hidden=!selected;if(selected&&focus)tab.focus();
   }
  }
+ function revealQuick(value){
+  const color=colors.thread(value);if(!color)return;
+  if(!contains('quick',color)&&collection('quick').length>=colors.limit){notify(`Maximum ${colors.limit} saved colors. Remove a color first.`);return;}
+  highlightedQuick=colors.key(color);
+  if(!contains('quick',color))change(()=>{state.quickColors=[color,...collection('quick')];});
+  else render();
+  selectTab(false);
+  $('quick-colors-panel').closest('details').open=true;
+  const row=[...$('quick-colors').children].find(el=>el.dataset.colorKey===highlightedQuick);
+  if(row){row.children[0].focus({preventScroll:true});row.scrollIntoView({block:'center',inline:'nearest'});}
+ }
  function add(value){
   const band=colors.toBand(value);
   if(band&&addBand(band,{reveal:false}))notify(`${band.name} added to design`);
@@ -74,7 +85,8 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const list=$(id);list.replaceChildren();
   if(!collection(section).length){list.append(make('p','color-empty',section==='quick'?'Collect threads with + Palette in the catalog, or clone the colors from your design.':'No favorites yet. Star a color in your quick palette or the catalog.'));return;}
   for(const value of collection(section)){
-   const identity=colors.key(value),row=make('div','saved-color');
+   const identity=colors.key(value),row=make('div',section==='quick'&&identity===highlightedQuick?'saved-color quick-highlight':'saved-color');
+   row.dataset.colorKey=identity;
    const choose=action(`Add ${value.name} — ${describe(value)}`,'',()=>add(value),`${section}-add-${identity}`);choose.className='saved-color-choice';
    const label=make('span','saved-color-label');label.append(make('strong','',value.name),make('small','',describe(value)));
    choose.append(swatch(value),label);row.append(choose);
@@ -99,9 +111,9 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const focused=document.activeElement?.dataset.colorControl;
   const designColors=colors.fromBands(state.bands),list=$('design-colors');list.replaceChildren();
   $('design-color-count').textContent=designColors.length;$('clone-design-colors').disabled=!designColors.length;
-  if(!designColors.length)list.append(make('p','color-empty','Add a thread to start. Your design colors will appear here for one-click reuse.'));
+  if(!designColors.length)list.append(make('p','color-empty','Add a thread to start. Your design colors will appear here to collect in Quick palette.'));
   for(const value of designColors){
-   const button=action(`Reuse ${value.name} — ${describe(value)}`,'',()=>add(value),`design-${colors.key(value)}`);
+   const button=action(`Collect ${value.name} in Quick palette — ${describe(value)}`,'',()=>revealQuick(value),`design-${colors.key(value)}`);
    button.className='design-color';button.append(swatch(value),make('span','',value.name));list.append(button);
   }
   $('quick-color-count').textContent=collection('quick').length;$('favorite-color-count').textContent=library.favorites.length;
@@ -132,7 +144,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    }
   };
  }
- window.colorWorkspace={render,hasQuick:value=>contains('quick',value),isFavorite:value=>contains('favorites',value),toggleQuick:value=>toggle('quick',value),toggleFavorite:value=>toggle('favorites',value)};
+ window.colorWorkspace={render,revealQuick,hasQuick:value=>contains('quick',value),isFavorite:value=>contains('favorites',value),toggleQuick:value=>toggle('quick',value),toggleFavorite:value=>toggle('favorites',value)};
  window.addEventListener('storage',event=>{if(event.key===storageKey||event.key===null){load();render();window.dispatchEvent(new Event('colorschange'));}});
  load();
  // Move the old shared palette into the current draft once; never share it with other designs.

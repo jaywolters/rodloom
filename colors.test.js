@@ -46,7 +46,8 @@ function workspace(stored=null,failStorage=false,draft={}){
   replaceChildren(){this.children=[];}
   setAttribute(name,value){this.attributes[name]=value;}
   focus(){document.activeElement=this;}
-  scrollIntoView(){}
+  scrollIntoView(options){this.scrolled=options;}
+  closest(){return $('palette-details');}
  }
  const elements={},listeners={},messages=[],bands=[{...red,turns:20},{...red,wrap:'spiral',turns:5,secondary:gold}],storage=new Map();
  if(stored!==null)storage.set('rodloom-colors-v1',stored);
@@ -76,6 +77,46 @@ test('quick palette clones design threads once and reuses colors without the cat
  assert.equal(bands[2].sku,red.sku);
  assert.equal(bands[2].turns,10);
  assert.equal(bands[2].wrap,undefined);
+});
+
+test('revealing a band color collects it, opens Quick palette, and highlights without adding a band',()=>{
+ const {$,api,context,storage,bands}=workspace();
+ $('favorite-colors-tab').onclick();
+ api.revealQuick(gold);
+ assert.equal(bands.length,2);
+ assert.equal(context.state.quickColors.length,1);
+ assert.equal(JSON.parse(storage.get('threadwrap-design')).quickColors[0].sku,gold.sku);
+ assert.equal($('quick-colors-panel').hidden,false);
+ assert.equal($('palette-details').open,true);
+ const row=$('quick-colors').children[0];
+ assert.equal(row.className,'saved-color quick-highlight');
+ assert.equal(row.scrolled.block,'center');
+ assert.equal(context.document.activeElement,row.children[0]);
+ api.revealQuick(gold);
+ assert.equal(context.state.quickColors.length,1);
+ api.revealQuick(red);
+ assert.equal(context.state.quickColors.length,2);
+ assert.equal($('quick-colors').children[0].className,'saved-color quick-highlight');
+ assert.equal($('quick-colors').children[1].className,'saved-color');
+});
+
+test('design color buttons collect and reveal threads without adding bands or duplicates',()=>{
+ const {$,bands,context}=workspace();
+ const before=JSON.stringify(bands);
+ $('favorite-colors-tab').onclick();
+ $('design-colors').children[0].onclick();
+ assert.equal(JSON.stringify(bands),before);
+ assert.equal(context.state.quickColors.length,1);
+ assert.equal(context.state.quickColors[0].sku,red.sku);
+ assert.equal($('quick-colors-panel').hidden,false);
+ assert.equal($('quick-colors').children[0].className,'saved-color quick-highlight');
+ $('design-colors').children[0].onclick();
+ assert.equal(context.state.quickColors.length,1);
+ assert.equal(JSON.stringify(bands),before);
+ $('design-colors').children[1].onclick();
+ assert.equal(context.state.quickColors.length,2);
+ assert.equal(context.state.quickColors[0].sku,gold.sku);
+ assert.equal(JSON.stringify(bands),before);
 });
 
 test('new quick palette colors appear first and persist in that order',()=>{

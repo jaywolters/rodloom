@@ -6,7 +6,7 @@ const vm=require('node:vm');
 
 function editor(){
  class Element {
-  constructor(cls=''){this.className=cls;this.children=[];this.dataset={};this.style={};this.listeners={};this.classList={add(){},remove(){}};}
+  constructor(cls=''){this.className=cls;this.children=[];this.dataset={};this.style={};this.listeners={};this.classes=new Set();this.classList={add:(cls)=>this.classes.add(cls),remove:(cls)=>this.classes.delete(cls)};}
   append(...children){this.children.push(...children);for(const child of children)child.parent=this;}
   replaceChildren(){this.children=[];}
   setAttribute(){}
@@ -14,7 +14,7 @@ function editor(){
   removeEventListener(type){delete this.listeners[type];}
   closest(selector){return selector==='.band'?this.parent:this.details;}
   querySelector(selector){return this.children.find(child=>child.className===selector.slice(1));}
-  querySelectorAll(){return [];}
+  querySelectorAll(selector){return this.children.filter(child=>child.classes.has(selector.slice(1)));}
   getBoundingClientRect(){const top=this.parent.children.indexOf(this)*100;return {top,height:100};}
   setPointerCapture(){}
   hasPointerCapture(){return false;}
@@ -92,6 +92,42 @@ test('design library shows saved designs before standard designs',()=>{
  assert.deepEqual(entries.map(entry=>entry.children[0].children[1].textContent),['My saved design','Standard design']);
  assert.equal(entries[0].children.length,2);
  assert.equal(entries[1].children.length,1);
+});
+
+test('preview clicks reveal the exact band without changing copy selection or design',()=>{
+ const {context,state,list}=editor();
+ const preview=context.$('preview');
+ preview.getBoundingClientRect=()=>({left:100,top:20,width:800,height:200});
+ preview.bandRegions=[{index:0,left:.1,right:.2,top:.25,bottom:.75},{index:2,left:.2,right:.3,top:.25,bottom:.75}];
+ const before=JSON.stringify(state);
+ context.revealPreviewBand({clientX:220,clientY:120});
+ assert.equal(list.details.open,true);
+ assert.ok(list.children[2].classes.has('preview-highlight'));
+ assert.equal(list.children[2].querySelector('.turns').focused,true);
+ assert.equal(list.children[2].scrolled.block,'center');
+ context.revealPreviewBand({clientX:300,clientY:120});
+ assert.ok(!list.children[2].classes.has('preview-highlight'));
+ assert.ok(list.children[0].classes.has('preview-highlight'));
+ context.revealPreviewBand({clientX:300,clientY:30});
+ assert.ok(list.children[0].classes.has('preview-highlight'));
+ assert.equal(context.selectedBands.size,0);
+ assert.equal(JSON.stringify(state),before);
+ assert.equal(context.history.length,0);
+});
+
+test('band chips reveal the correct quick palette thread including both spiral strands',()=>{
+ const {context,state,list}=editor(),revealed=[];
+ context.colorWorkspace={render(){},revealQuick:thread=>revealed.push(thread)};
+ list.children[0].children[2].onclick();
+ assert.equal(revealed[0],state.bands[2]);
+ state.bands[2].wrap='spiral';state.bands[2].secondary={name:'Incoming',color:'#abcdef'};
+ context.render();
+ const row=list.children[0];
+ row.children[2].onclick();
+ row.children.at(-1).children[1].onclick();
+ assert.equal(revealed[1],state.bands[2].secondary);
+ assert.equal(revealed[2],state.bands[2]);
+ assert.equal(context.history.length,0);
 });
 
 test('editor displays reversed wrap order and new colors at the top',()=>{
@@ -243,7 +279,7 @@ test('spirals keep wrap order but display incoming above outgoing to match neigh
  assert.deepEqual(names(list),['C','B','B','A']);
  const spiral=list.children[2];
  const paired=spiral.children[6];
- assert.equal(spiral.children[2].value,state.bands[1].secondary.color);
- assert.equal(paired.children[1].value,state.bands[1].color);
+ assert.equal(spiral.children[2].style.background,state.bands[1].secondary.color);
+ assert.equal(paired.children[1].style.background,state.bands[1].color);
  assert.equal(paired.children[2].value,'A');
 });

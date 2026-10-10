@@ -99,7 +99,8 @@ summary:hover{color:var(--blue)}
 .setup-fields{display:flex;gap:12px;margin:10px 0}
 .setup-fields label{display:flex;flex:1;flex-direction:column;gap:5px;color:var(--muted);font-size:11px}
 .design-tools{background:var(--white)}
-.palette-lookup{padding:8px 10px}
+.palette-lookup{padding:0 10px}
+.palette-lookup[open]{padding-bottom:8px}
 .palette-lookup>summary{font-size:12px}
 .summary-note{font-size:10px;font-weight:400;color:var(--muted);margin-left:10px}
 .catalog-help{font-size:10px;margin:6px 0 8px}
@@ -132,11 +133,14 @@ summary:hover{color:var(--blue)}
 .catalog-actions button[aria-pressed=true]{background:var(--selected);color:var(--blue)}
 .catalog-source{font-size:9px;padding:0 7px 5px;text-decoration:none;color:var(--muted)}
 .catalog-source:hover{text-decoration:underline;color:var(--blue)}
-.starting-points{padding:8px 10px;margin-bottom:8px}
+.starting-points{padding:0 10px;margin-bottom:8px}
+.starting-points[open]{padding-bottom:8px}
 .starting-points summary{font-size:12px}
 .starting-points .hint{margin:7px 0}
-#presets{display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto;padding:2px}
-.library-entry{position:relative;display:flex;flex-shrink:0}
+/* Columns fill 100% of the available width (220px minimum when space allows).
+   Rows are automatic: ceil(design count / column count). */
+#presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));grid-auto-rows:auto;gap:6px;max-height:240px;overflow-y:auto;padding:2px;align-items:start}
+.library-entry{position:relative;display:flex;min-width:0;width:100%}
 .preset{width:100%;padding:7px 8px;min-width:0;text-align:left;font-size:11px;background:var(--subtle)}
 .preset-strip{display:flex;height:12px;overflow:hidden;margin-bottom:5px;border-radius:1px}
 .preset-strip span{height:100%}
@@ -146,8 +150,12 @@ summary:hover{color:var(--blue)}
 .library-delete{position:absolute;right:5px;bottom:5px;background:transparent;border-color:transparent}
 /* Swatches are a persistent tool, independent of the active design and its undo stack. */
 .color-workspace{margin-bottom:8px}
-.dock-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px 5px}
-.dock-heading h2{white-space:nowrap}
+.dock-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--white)}
+.dock-heading h2{white-space:nowrap;margin-right:auto}
+.dock-heading{justify-content:flex-start;list-style:none}
+.dock-heading::-webkit-details-marker{display:none}
+.dock-heading::before{content:'▸';font-size:11px}
+.color-workspace[open]>.dock-heading::before{content:'▾'}
 .count{font-size:10px;font-weight:400;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
 .compact-button{font-size:10px;padding:3px 6px}
 .design-swatches{display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px 9px;max-height:76px;overflow-y:auto}
@@ -163,6 +171,7 @@ summary:hover{color:var(--blue)}
 .color-shelf{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:5px 8px 8px}
 .saved-color{display:flex;align-items:center;min-width:0;border:1px solid transparent;border-radius:2px}
 .saved-color:hover,.saved-color:focus-within{background:var(--subtle);border-color:var(--line)}
+.saved-color.quick-highlight{background:var(--subtle);border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue);scroll-margin-block:20px}
 .saved-color-choice{display:flex;align-items:center;flex:1;gap:8px;min-width:0;padding:3px 4px;text-align:left;background:transparent;border:0}
 .saved-color-label{display:flex;flex-direction:column;min-width:0;flex:1}
 .saved-color-label strong{font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -173,26 +182,32 @@ summary:hover{color:var(--blue)}
 .color-collect{width:auto;font-size:10px;white-space:nowrap;padding:6px}
 .color-empty{font-size:11px;line-height:1.6;padding:3px 2px;max-width:60ch}
 .color-storage-status{padding:6px 10px;border-top:1px solid var(--line);font-size:10px;color:var(--blue)}
-.editor{padding:0 10px 10px}
+.editor{padding:0 10px}
+.editor:has(.thread-design[open]){padding-bottom:10px}
 .design-name-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px 8px;padding:10px 0}
 .name-label{grid-column:1/-1;font-size:10px;color:var(--muted)}
 .design-name-row input{font-size:12px;font-weight:500}
 .design-actions{display:flex;align-items:center;gap:3px}
 .design-actions #band-count{font-size:9px;color:var(--muted);margin-right:2px;white-space:nowrap}
 .design-actions .icon-button{width:25px;height:26px;padding:4px}
-.thread-design{border-top:1px solid var(--line);padding-top:8px}
-.thread-design summary{font-size:12px;margin-bottom:8px}
+.thread-design>summary{font-size:12px;background:var(--white)}
+/* Collapsed panels contain only their heading, with no inner divider or footer gap. */
+.palette-lookup>summary,.starting-points>summary,.thread-design>summary{padding:8px 10px;margin:0 -10px}
+.palette-lookup>summary,.starting-points>summary,.thread-design>summary,.color-workspace>.dock-heading{min-height:38px;border-bottom:0}
+.palette-lookup[open]>summary,.starting-points[open]>summary,.thread-design[open]>summary,.color-workspace[open]>.dock-heading{border-bottom:1px solid var(--line)}
 .bands-heading{display:grid;grid-template-columns:1fr 49px 80px;gap:5px;padding:0 0 5px 67px;font-size:9px;color:var(--muted)}
 .band{position:relative;display:grid;grid-template-columns:15px 16px 25px minmax(0,1fr) 49px 80px;column-gap:5px;row-gap:3px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.band.preview-highlight{background:var(--subtle);box-shadow:inset 3px 0 0 var(--blue);outline:2px solid var(--blue);outline-offset:-2px;scroll-margin-block:20px}
+#preview{cursor:pointer}
 .band-details{display:contents}
 .band>.drag-handle{grid-column:1;grid-row:1}
 .band>.select-band{grid-column:2;grid-row:1}
-.band>input[type=color]{grid-column:3;grid-row:1}
+.band>.band-color-chip{grid-column:3;grid-row:1}
 .band-details>.name{grid-column:4;grid-row:1}
 .band>.turns{grid-column:5;grid-row:1}
 .band>.band-tools{grid-column:6;grid-row:1}
 .band-details>.brand-note{grid-column:4/-1;grid-row:2;min-width:0}
-.band input[type=color]{height:27px;width:25px;padding:0;border:0;background:transparent;opacity:1;cursor:default}
+.band .band-color-chip{height:27px;width:25px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer}
 .band input.name{font-size:11px;padding:4px 5px;border-color:transparent;background:var(--subtle)}
 .band input.turns{font-size:11px;padding:4px 2px 4px 5px;font-variant-numeric:tabular-nums}
 .brand-note{display:block;font-size:9px;color:var(--muted);overflow-wrap:anywhere}
@@ -245,15 +260,23 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  .scale-settings{flex-shrink:0;max-height:35%;overflow-y:auto}
  .preview-stage{flex:1;min-height:170px;height:auto}
  .design-tools{flex:0 1 auto;max-height:44%;min-height:34px;overflow-y:auto;scrollbar-gutter:stable}
- /* Keep the native collapse control visible while the catalog panel scrolls. */
- .palette-lookup>summary{position:sticky;top:0;z-index:2;background:var(--white);margin:-8px -10px 0;padding:8px 10px;border-bottom:1px solid var(--line)}
- .starting-points{flex:0 1 auto;min-height:34px;max-height:28%;overflow-y:auto}
+ /* Keep section headings visible while their panel contents scroll. */
+ .palette-lookup>summary,.starting-points>summary,.thread-design>summary{position:sticky;top:0;z-index:2;background:var(--white)}
+ .starting-points{flex:0 0 auto;min-height:34px;overflow-y:auto}
+ .starting-points[open]{flex:1 1 0}
  /* The desktop library panel owns scrolling; avoid a nested list scrollbar. */
  .starting-points #presets{max-height:none;overflow:visible}
- .color-workspace{display:flex;flex-direction:column;flex:0 1 288px;min-height:180px}
+ .color-workspace{flex:0 0 auto;min-height:34px}
+ .color-workspace[open]{flex:1 1 0;overflow-y:auto;scrollbar-gutter:stable}
+ .color-workspace>.dock-heading{height:38px}
+ .color-workspace-body{display:flex;flex-direction:column;min-height:0}
+ .color-workspace:not([open])>.color-workspace-body{display:none}
  .dock-heading,.design-swatches,.palette-tabs,.color-storage-status{flex-shrink:0}
- .color-workspace [role=tabpanel]{min-height:0;overflow-y:auto;scrollbar-gutter:stable}
- .editor{flex:1;min-height:155px;overflow-y:auto;scrollbar-gutter:stable}
+ .dock-heading{position:sticky;top:0;z-index:2}
+ /* The expanded panel owns scrolling, just like the library and bands. */
+ .color-workspace [role=tabpanel]{min-height:0;overflow:visible}
+ .editor{flex:0 0 auto;min-height:34px;padding-bottom:0;overflow-y:auto;scrollbar-gutter:stable}
+ .editor:has(.thread-design[open]){flex:1 1 0;padding-bottom:10px}
  footer{flex-shrink:0}
 }
 @media screen and (min-width:1500px){
@@ -289,6 +312,8 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  footer{flex-wrap:wrap}
 }
 @media(max-width:540px){
+ /* One full-width column; one automatic row per design. */
+ #presets{grid-template-columns:minmax(0,1fr)}
  header{padding:0 8px;gap:8px;height:46px}
  .brand{font-size:14px}.brand-icon{font-size:20px}
  .header-actions{gap:2px}.header-actions button{padding:5px 6px;font-size:11px}
