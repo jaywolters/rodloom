@@ -60,7 +60,7 @@ $('apply-calibration').onclick=()=>{
 $('measured-ruler').oninput=()=>$('measured-ruler').setCustomValidity('');
 const validColor = c => typeof c==='string' && /^#[0-9a-f]{6}$/i.test(c);
 function validate(s){
- if(!s || typeof s.name!=='string' || s.name.length>80 || !Array.isArray(s.bands) || s.bands.length>100) throw Error('Invalid design');
+ if(!s || typeof s.name!=='string' || s.name.length>80 || !Array.isArray(s.bands)) throw Error('Invalid design');
  if(s.threadSize!==undefined&&!['A','D'].includes(s.threadSize))throw Error('Invalid thread size');
  if(!Number.isFinite(s.coverage)||s.coverage<.05||s.coverage>1||!Number.isFinite(s.diameter)||s.diameter<1||s.diameter>50||!validColor(s.blank)) throw Error('Invalid dimensions');
  for(const b of s.bands) if(!b || typeof b.name!=='string'||b.name.length>80||!validColor(b.color)||!Number.isInteger(b.turns)||b.turns<1||b.turns>1000||!['regular','metallic','neon'].includes(b.finish)||typeof b.brand!=='string'||b.brand.length>40) throw Error('Invalid band');
@@ -134,6 +134,14 @@ function copyBandGroups(bands){
   b.group=ids.get(b.group);
  }
  return copies;
+}
+function cloneBandGroup(group){
+ const bands=state.bands.filter(b=>b.group===group);
+ if(!bands.length)return;
+ change(()=>state.bands.push(...copyBandGroups(bands)));
+ $('bands').closest('details').open=true;
+ $('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
+ notify(`Cloned “${bands.find(b=>b.groupName)?.groupName||'Band group'}”. Undo to restore the previous design.`);
 }
 function bandBlock(index){
  const group=state.bands[index].group;
@@ -221,7 +229,7 @@ function updateBlockControls(){
  $('copy-bands').disabled=!selectedBands.size;
  $('select-same-color').disabled=!selectedBands.size;
  $('clear-band-selection').disabled=!selectedBands.size;
- $('paste-bands').disabled=!bandClipboard.length||state.bands.length+bandClipboard.length>100;
+ $('paste-bands').disabled=!bandClipboard.length;
  $('block-status').textContent=`${selectedBands.size} selected · ${bandClipboard.length} copied`;
 }
 function selectSameColor(seedThreads){
@@ -280,7 +288,6 @@ function copySelectedBands(){
 }
 function pasteBands(){
  if(!bandClipboard.length)return;
- if(state.bands.length+bandClipboard.length>100){notify('Pasting would exceed 100 bands.');return;}
  change(()=>{
   const copies=copyBandGroups(bandClipboard);
   state.bands.push(...copies);selectedBands=new Set(copies);
@@ -383,7 +390,7 @@ function render(){
     title.onchange=()=>renameBandGroup(b.group,title.value);
     title.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();title.blur();}else if(event.key==='Escape'){event.preventDefault();title.value=b.groupName||'';title.blur();}};
     header.append(drag,title,make('span','band-group-count',`${block.end-block.start+1} bands`));
-    for(const [label,icon,disabled,fn] of [['Move group up','↑',block.end===state.bands.length-1,()=>moveBandBlock(i,true)],['Move group down','↓',block.start===0,()=>moveBandBlock(i,false)],['Ungroup','',false,()=>change(()=>{for(const band of state.bands)if(band.group===b.group){delete band.group;delete band.groupName;}})],['Delete group','',false,()=>deleteBandGroup(b.group)]]){
+    for(const [label,icon,disabled,fn] of [['Move group up','↑',block.end===state.bands.length-1,()=>moveBandBlock(i,true)],['Move group down','↓',block.start===0,()=>moveBandBlock(i,false)],['Clone group','⧉',false,()=>cloneBandGroup(b.group)],['Ungroup','',false,()=>change(()=>{for(const band of state.bands)if(band.group===b.group){delete band.group;delete band.groupName;}})],['Delete group','',false,()=>deleteBandGroup(b.group)]]){
      const button=make('button','group-action',icon);button.type='button';button.title=label;button.setAttribute('aria-label',label);button.disabled=disabled;
      if(label==='Ungroup'||label==='Delete group'){
       button.classList.add('group-action-icon');
@@ -399,7 +406,6 @@ function render(){
  });refresh();globalThis.colorWorkspace?.render();
 }
 function insertSpiral(index){
- if(state.bands.length>=100){notify('Maximum 100 bands per design.');return;}
  change(()=>{
   const outgoing=structuredClone(state.bands[index]),incoming=structuredClone(state.bands[index+1]);
   const group=outgoing.group===incoming.group?outgoing.group:undefined,groupName=group?outgoing.groupName:undefined;
@@ -584,13 +590,12 @@ function draw(target=$('preview'),exporting=false){
 }
 function addBand(b,{reveal=true}={}){
  if(!isCatalogThread(b)){notify('Choose a Fuji or ProWrap catalog thread.');return false;}
- if(state.bands.length>=100){notify('Maximum 100 bands per design.');return false;}
  change(()=>{const copy=structuredClone(b);delete copy.group;delete copy.groupName;state.bands.push(copy);});
  $('bands').closest('details').open=true;
  if(reveal)$('bands').firstElementChild.scrollIntoView({block:'start',inline:'nearest'});
  return true;
 }
-$('mirror').onclick=()=>{if(state.bands.length*2>100){notify('Mirroring would exceed 100 bands.');return;}change(()=>state.bands.push(...copyBandGroups(state.bands.map(reflectedBand).reverse())));notify('Added a reversed copy of every band.');};
+$('mirror').onclick=()=>{change(()=>state.bands.push(...copyBandGroups(state.bands.map(reflectedBand).reverse())));notify('Added a reversed copy of every band.');};
 $('reverse').onclick=()=>change(()=>state.bands=state.bands.map(reflectedBand).reverse());$('undo').onclick=()=>{if(history.length){state=history.pop();render();}};
 $('design-name').onchange=()=>change(()=>state.name=$('design-name').value);
 $('thread-size').onchange=async()=>{
@@ -653,7 +658,28 @@ $('save').onclick=async()=>{
 };
 $('export').onclick=()=>{download(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),`${filename()}.json`);notify('Design downloaded.');};
 $('image').onclick=()=>{const canvas=make('canvas');draw(canvas,true);canvas.toBlob(blob=>{if(blob)download(blob,`${filename()}.png`);else notify('Could not export the image. Please try again.');});};
-$('import').onclick=()=>$('file').click();$('file').onchange=async()=>{const file=$('file').files[0];if(!file)return;try{if(file.size>250000)throw Error('File too large');const next=validate(JSON.parse(await file.text()));if(await canReplaceDesign()){change(()=>state={...next,quickColors:next.quickColors||[]});markClean();notify('Design opened.');}}catch{notify('Cannot open this file. Choose a valid Rod Loom design file.');}finally{$('file').value='';}};
+$('import').onclick=()=>$('file').click();
+$('file').onchange=async()=>{
+ const file=$('file').files[0];if(!file)return;
+ try{
+  if(file.size>250000)throw Error('File too large');
+  const next=validate(JSON.parse(await file.text()));
+  if(!await canReplaceDesign())return;
+  let saved=false;
+  try{
+   const designs=readLibrary();
+   const index=designs.findIndex(item=>item.name===next.name&&item.threadSize===next.threadSize);
+   if(index>=0&&!await confirmAction(`Replace the saved design “${next.name}” (Size ${next.threadSize})?`,'Replace saved design','Replace'))return;
+   if(index>=0)designs[index]=next;else designs.push(next);
+   localStorage.setItem(libraryKey,JSON.stringify(designs));
+   saved=true;
+  }catch{}
+  change(()=>state={...next,quickColors:next.quickColors||[]});
+  if(saved){markClean();renderLibrary();notify('Design imported and saved in this browser.');}
+  else notify('Design opened, but could not save in browser storage. Use Export for a backup.');
+ }catch{notify('Cannot open this file. Choose a valid Rod Loom design file.');}
+ finally{$('file').value='';}
+};
 document.querySelector('.starting-points').addEventListener('toggle',event=>{
  if(event.currentTarget.open)renderStartingPoints();
 });

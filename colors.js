@@ -32,11 +32,9 @@
   }
   return result;
  }
- function parsePattern(text,palette){
+ function parsePatternDefinition(text){
   const tokens=text.trim().split(/[,\n]+/);
   if(!text.trim())throw Error('Type a pattern first.');
-  if(tokens.length>100)throw Error('Maximum 100 bands per pattern.');
-  const lookup=new Map(labelPalette(palette).map(value=>[value.paletteLetter,value]));
   return tokens.map((token,index)=>{
    const match=token.trim().toUpperCase().match(/^(\d+)\s*([/\\]?)\s*([A-Z]+(?:\s*\+\s*[A-Z]+)?)$/);
    if(!match)throw Error(`Band ${index+1}: use 12A, 4/AB, or 4\\AB.`);
@@ -44,6 +42,13 @@
    if(!Number.isInteger(turns)||turns<1||turns>1000)throw Error(`Band ${index+1}: turns must be 1–1000.`);
    const letters=direction?(code.includes('+')?code.split(/\s*\+\s*/):code.length===2?[...code]:[]):[code];
    if(letters.length!==(direction?2:1))throw Error(`Band ${index+1}: a spiral needs two colors (AB or A+B).`);
+   return {turns,direction,letters};
+  });
+ }
+ function parsePattern(text,palette){
+  const definition=parsePatternDefinition(text);
+  const lookup=new Map(labelPalette(palette).map(value=>[value.paletteLetter,value]));
+  return definition.map(({turns,direction,letters},index)=>{
    const threads=letters.map(label=>{
     const value=thread(lookup.get(label));
     if(!value)throw Error(`Band ${index+1}: color ${label} is not in the quick palette.`);
@@ -77,7 +82,7 @@
   }
   return data.patterns.map(({name,text})=>({name,text}));
  }
- const api={limit,thread,key,unique,fromBands,toBand,decode,letter,labelPalette,parsePattern,decodePatterns};
+ const api={limit,thread,key,unique,fromBands,toBand,decode,letter,labelPalette,parsePatternDefinition,parsePattern,decodePatterns};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ThreadColors=api;
 })(typeof window==='undefined'?globalThis:window);
 
@@ -96,6 +101,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   catch{storageWarning('Colors are only saved for this session. Browser storage is unavailable or full.');}
   render();window.dispatchEvent(new Event('colorschange'));
  }
+ function orderedPalette(values){return values.map((item,index)=>({...item,paletteLetter:colors.letter(index)}));}
  function toggle(section,value){
   const color=colors.thread(value);if(!color)return;
   delete color.paletteLetter;
@@ -103,7 +109,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   if(!contains(section,color)&&current.length>=colors.limit){notify(`Maximum ${colors.limit} saved colors. Remove a color first.`);return;}
   const next=contains(section,color)?current.filter(item=>colors.key(item)!==colors.key(color)):section==='quick'?[color,...current]:[...current,color];
   if(section==='quick'){
-   change(()=>{state.quickColors=colors.labelPalette(next);});
+   change(()=>{state.quickColors=orderedPalette(next);});
   }else{library.favorites=next;save();}
  }
  const paletteTabs=[['quick','quick-colors-tab','quick-colors-panel'],['favorite','favorite-colors-tab','favorite-colors-panel'],['patterns','type-pattern','patterns-panel']];
@@ -111,7 +117,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const next=collection('quick'),index=next.findIndex(item=>colors.key(item)===colors.key(value)),target=index+offset;
   if(index<0||target<0||target>=next.length)return;
   [next[index],next[target]]=[next[target],next[index]];
-  change(()=>{state.quickColors=next.map((item,index)=>({...item,paletteLetter:colors.letter(index)}));});
+  change(()=>{state.quickColors=orderedPalette(next);});
   notify('Palette reordered and letters reassigned. Existing bands are unchanged. Undo to restore.');
  }
  function selectTab(name,focus=false){
@@ -127,7 +133,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const color=colors.thread(value);if(!color)return;
   if(!contains('quick',color)&&collection('quick').length>=colors.limit){notify(`Maximum ${colors.limit} saved colors. Remove a color first.`);return;}
   highlightedQuick=colors.key(color);
-  if(!contains('quick',color))change(()=>{state.quickColors=colors.labelPalette([color,...collection('quick')]);});
+  if(!contains('quick',color))change(()=>{state.quickColors=orderedPalette([color,...collection('quick')]);});
   else render();
   selectTab('quick');
   $('quick-colors-panel').closest('details').open=true;
@@ -203,7 +209,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
  $('clone-design-colors').onclick=()=>{
   const threads=colors.fromBands(state.bands),before=collection('quick').length;
   const combined=colors.unique([...collection('quick'),...threads]);
-  if(combined.length!==before)change(()=>{state.quickColors=colors.labelPalette(combined,false);});
+  if(combined.length!==before)change(()=>{state.quickColors=orderedPalette(combined);});
   selectTab('quick');
   const omitted=threads.some(value=>!contains('quick',value));
   notify(omitted?`Palette limit reached (${colors.limit} colors). Remove colors to collect more.`:`${combined.length-before} new colors collected · click any swatch to reuse it`);
@@ -274,7 +280,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    const name=$('pattern-save-name').value.trim(),text=$('pattern-text').value.trim();
    if(!name||name.length>80)throw Error('Enter a pattern name (up to 80 characters).');
    if(text.length>10000)throw Error('Pattern text is too long.');
-   colors.parsePattern(text,collection('quick'));
+   colors.parsePatternDefinition(text);
    const existing=namedPatterns.find(pattern=>pattern.name.toLowerCase()===name.toLowerCase());
    if(existing&&existing.name!==editingPatternName&&existing.text!==text)throw Error('That pattern name is already saved. Choose a different name.');
    if(existing&&editingPatternName&&existing.name!==editingPatternName)throw Error('That pattern name is already saved. Choose a different name.');
@@ -297,7 +303,6 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
  }
  function buildPattern(text,replace){
   const bands=colors.parsePattern(text,collection('quick'));
-  if((replace?0:state.bands.length)+bands.length>100)throw Error('This would exceed 100 bands. Use Replace instead, or shorten the pattern.');
   change(()=>{state.bands=replace?bands:[...state.bands,...bands];selectedBands.clear();});
   $('pattern-error').textContent='';$('bands').closest('details').open=true;
   notify(`${bands.length} bands ${replace?'built':'added'} from pattern. Undo to restore the previous design.`);

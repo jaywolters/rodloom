@@ -185,6 +185,33 @@ test('group names are editable, undoable, copied independently, and removed on u
  assert.equal(list.querySelector('.band-group-title').value,'');
 });
 
+test('group clone button preserves names, order, and independent spirals with one undo step',()=>{
+ const {context,state,list}=editor();
+ context.insertSpiral(0);
+ context.selectedBands=new Set(state.bands.slice(0,3));context.groupSelectedBands();
+ const group=state.bands[0].group;
+ context.renameBandGroup(group,'Accent');
+ context.collapsedBandGroups.add(group);context.render();
+ const originals=state.bands.slice(0,3),before=JSON.stringify(state),count=context.history.length;
+ const button=list.querySelectorAll('.group-action').find(button=>button.title==='Clone group');
+ assert.equal(button.attributes['aria-label'],'Clone group');
+ let prevented=false;button.onclick({preventDefault(){prevented=true;}});
+ assert.equal(prevented,true);
+ assert.equal(context.history.length,count+1);
+ assert.equal(JSON.stringify(context.history.at(-1)),before);
+ assert.equal(state.bands.length,7);
+ const copies=state.bands.slice(-3),copyGroup=copies[0].group;
+ assert.notEqual(copyGroup,group);
+ assert.ok(copies.every(b=>b.group===copyGroup&&b.groupName==='Accent'));
+ assert.deepEqual(copies.map(b=>b.turns),originals.map(b=>b.turns));
+ assert.equal(copies[1].wrap,'spiral');
+ assert.notEqual(copies[1].secondary,originals[1].secondary);
+ copies[1].secondary.name='Independent';
+ assert.notEqual(originals[1].secondary.name,'Independent');
+ context.renameBandGroup(copyGroup,'Copy');
+ assert.equal(originals[0].groupName,'Accent');
+});
+
 test('group ungroup and delete actions use icons with title tooltips',()=>{
  const {context,state,list}=editor();
  context.selectedBands=new Set(state.bands.slice(0,2));context.groupSelectedBands();
@@ -356,7 +383,7 @@ test('blocks copy in wrap order, paste independently, and repeat with one undo p
  assert.equal(context.bandClipboard.length,2);
 });
 
-test('block paste preserves nested spirals and rejects overflow without a partial paste',()=>{
+test('block paste preserves nested spirals and supports more than 100 bands',()=>{
  const {context,state}=editor();
  context.insertSpiral(0);
  context.selectedBands.add(state.bands[1]);context.copySelectedBands();context.pasteBands();
@@ -366,11 +393,11 @@ test('block paste preserves nested spirals and rejects overflow without a partia
  while(state.bands.length<100)state.bands.push(structuredClone(state.bands[0]));
  const checkpoints=context.history.length;
  context.pasteBands();
- assert.equal(state.bands.length,100);
- assert.equal(context.history.length,checkpoints);
+ assert.equal(state.bands.length,101);
+ assert.equal(context.history.length,checkpoints+1);
  context.state=structuredClone(state);context.render();
  assert.equal(context.selectedBands.size,0);
- assert.equal(context.$('paste-bands').disabled,true);
+ assert.equal(context.$('paste-bands').disabled,false);
 });
 
 test('palette replacement preserves turns, selection, and spiral geometry with one undo snapshot',()=>{
@@ -458,11 +485,17 @@ test('spiral checkboxes select and replace either strand independently',()=>{
  assert.equal(context.selectedBands.has(spiral),false);
 });
 
-test('cloning respects the design band limit',()=>{
+test('cloning, inserting spirals, and mirroring support more than 100 bands',()=>{
  const {context,state}=editor();
- state.bands=Array.from({length:100},()=>({name:'A',color:'#123456',turns:1}));
- assert.equal(context.addBand(state.bands[0]),false);
- assert.equal(state.bands.length,100);
+ state.bands=Array.from({length:100},()=>structuredClone(state.bands[0]));
+ assert.equal(context.addBand(state.bands[0]),true);
+ assert.equal(state.bands.length,101);
+ context.insertSpiral(0);
+ assert.equal(state.bands.length,102);
+ const source=fs.readFileSync('app.js','utf8');
+ vm.runInContext(source.slice(source.indexOf('function reflectedBand('),source.indexOf('function draw('))+source.slice(source.indexOf("$('mirror').onclick="),source.indexOf("$('reverse').onclick=")),context);
+ context.$('mirror').onclick();
+ assert.equal(state.bands.length,204);
 });
 
 test('move arrows follow visible order with correct edge disabling',()=>{
