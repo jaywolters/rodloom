@@ -182,13 +182,38 @@ function renameBandGroup(group,name){
  change(()=>{for(const b of bands){if(name)b.groupName=name;else delete b.groupName;}});
 }
 let bandSelectionAnchor=null;
-function selectBandRange(band,checked,shiftKey=false){
+const selectedSpiralThreads=new Map();
+function selectedStrands(band){
+ return selectedBands.has(band)?(selectedSpiralThreads.get(band)||new Set(['incoming'])):new Set();
+}
+function syncBandSelection(){
+ for(const row of $('bands').querySelectorAll('.band')){
+  const band=state.bands[Number(row.dataset.index)];
+  row.querySelector('.select-band').checked=band.wrap==='spiral'?selectedStrands(band).has('incoming'):selectedBands.has(band);
+  const outgoing=row.querySelector('.select-outgoing');
+  if(outgoing)outgoing.checked=selectedStrands(band).has('outgoing');
+ }
+ updateBlockControls();globalThis.colorWorkspace?.render();
+}
+function selectSpiralStrand(band,strand,checked){
+ const strands=new Set(selectedStrands(band));
+ if(checked)strands.add(strand);else strands.delete(strand);
+ selectedSpiralThreads.set(band,strands);
+ if(strands.size)selectedBands.add(band);else selectedBands.delete(band);
+ syncBandSelection();
+}
+function selectBandRange(band,checked,shiftKey=false,strand='incoming'){
  const index=state.bands.indexOf(band),anchor=state.bands.indexOf(bandSelectionAnchor);
  const targets=shiftKey&&anchor>=0?state.bands.slice(Math.min(anchor,index),Math.max(anchor,index)+1):[band];
- for(const target of targets){if(checked)selectedBands.add(target);else selectedBands.delete(target);}
+ for(const target of targets){
+  if(target.wrap==='spiral'){
+   selectSpiralStrand(target,strand,checked);
+   if(shiftKey&&anchor>=0)selectSpiralStrand(target,strand==='incoming'?'outgoing':'incoming',checked);
+  }
+  else if(checked)selectedBands.add(target);else selectedBands.delete(target);
+ }
  if(!shiftKey||anchor<0)bandSelectionAnchor=band;
- for(const row of $('bands').querySelectorAll('.band'))row.querySelector('.select-band').checked=selectedBands.has(state.bands[Number(row.dataset.index)]);
- updateBlockControls();globalThis.colorWorkspace?.render();
+ syncBandSelection();
 }
 function updateBlockControls(){
  $('group-bands').disabled=selectedBands.size<2;
@@ -199,13 +224,25 @@ function updateBlockControls(){
  $('paste-bands').disabled=!bandClipboard.length||state.bands.length+bandClipboard.length>100;
  $('block-status').textContent=`${selectedBands.size} selected · ${bandClipboard.length} copied`;
 }
-function selectSameColor(){
- // Match catalog identity rather than approximate RGB, using the same visible
- // incoming thread that Replace selected targets for paired spirals.
- const key=b=>{const t=b.wrap==='spiral'?b.secondary:b;return JSON.stringify([t.brand,t.line||'',t.sku]);};
- const colors=new Set(state.bands.filter(b=>selectedBands.has(b)).map(key));
+function selectSameColor(seedThreads){
+ // Context menus can target one thread without inheriting other selections.
+ const key=t=>JSON.stringify([t.brand,t.line||'',t.sku]);
+ const colors=new Set(Array.isArray(seedThreads)?seedThreads.map(key):[]);
+ for(const band of Array.isArray(seedThreads)?[]:state.bands.filter(b=>selectedBands.has(b))){
+  if(band.wrap!=='spiral')colors.add(key(band));
+  else for(const strand of selectedStrands(band))colors.add(key(strand==='incoming'?band.secondary:band));
+ }
  if(!colors.size)return;
- selectedBands=new Set(state.bands.filter(b=>colors.has(key(b))));
+ selectedBands=new Set();selectedSpiralThreads.clear();
+ for(const band of state.bands){
+  if(band.wrap!=='spiral'){if(colors.has(key(band)))selectedBands.add(band);}
+  else{
+   const strands=new Set();
+   if(colors.has(key(band.secondary)))strands.add('incoming');
+   if(colors.has(key(band)))strands.add('outgoing');
+   if(strands.size){selectedBands.add(band);selectedSpiralThreads.set(band,strands);}
+  }
+ }
  render();
  notify(`Selected ${selectedBands.size} bands with matching thread colors.`);
 }
@@ -217,7 +254,15 @@ function replaceSelectedBands(thread){
  const {turns,wrap,secondary,direction,...color}=thread;
  change(()=>{
   for(const band of targets){
-   if(band.wrap==='spiral')band.secondary={...structuredClone(color),...(band.secondary.turns!==undefined?{turns:band.secondary.turns}:{})};
+   if(band.wrap==='spiral'){
+    const strands=selectedStrands(band);
+    if(strands.has('incoming'))band.secondary={...structuredClone(color),...(band.secondary.turns!==undefined?{turns:band.secondary.turns}:{})};
+    if(strands.has('outgoing')){
+     const geometry={turns:band.turns,wrap:band.wrap,secondary:band.secondary,direction:band.direction,...(band.group?{group:band.group,...(band.groupName?{groupName:band.groupName}:{})}:{})};
+     for(const key of Object.keys(band))delete band[key];
+     Object.assign(band,structuredClone(color),geometry);
+    }
+   }
    else{
     const geometry={turns:band.turns,...(band.wrap?{wrap:band.wrap}:{}),...(band.group?{group:band.group,...(band.groupName?{groupName:band.groupName}:{})}:{})};
     for(const key of Object.keys(band))delete band[key];
@@ -269,13 +314,14 @@ function bandColorChip(thread,label){
 }
 function render(){
  selectedBands=new Set([...selectedBands].filter(b=>state.bands.includes(b)));
+ for(const band of selectedSpiralThreads.keys())if(!selectedBands.has(band)||band.wrap!=='spiral')selectedSpiralThreads.delete(band);
  if(!state.bands.includes(bandSelectionAnchor))bandSelectionAnchor=null;
  $('group-bands').onclick=groupSelectedBands;
  $('ungroup-bands').onclick=ungroupSelectedBands;
  $('copy-bands').onclick=copySelectedBands;
  $('select-same-color').onclick=selectSameColor;
  $('paste-bands').onclick=pasteBands;
- $('clear-band-selection').onclick=()=>{selectedBands.clear();bandSelectionAnchor=null;render();};
+ $('clear-band-selection').onclick=()=>{selectedBands.clear();selectedSpiralThreads.clear();bandSelectionAnchor=null;render();};
  updateBlockControls();
  $('thread-size').value=state.threadSize||'D';$('design-thread-size').textContent=`Size ${state.threadSize||'D'}`;
  $('design-name').value=state.name;$('coverage').value=state.coverage;$('diameter').value=state.diameter;$('blank').value=state.blank;$('texture').checked=state.texture;
@@ -293,12 +339,12 @@ function render(){
   // Match the bottom-to-top list: incoming thread above outgoing thread.
   const upper=b.wrap==='spiral'?b.secondary:b;
   const color=bandColorChip(upper,`Band ${i+1} ${b.wrap==='spiral'?'incoming thread ':''}color`);
-  const details=make('div','band-details');const name=make('input','name');name.value=upper.name;name.maxLength=80;name.setAttribute('aria-label',`Band ${i+1} ${b.wrap==='spiral'?'incoming ':''}thread name`);name.readOnly=true;
+  const details=make('div','band-details');const name=make('span','name',upper.name);name.title=upper.name;
   details.append(name);if(upper.brand){const brand=make('small','brand-note',upper.catalog?`${upper.brand} · ${upper.line || ''} · ${upper.sku || ''}`:`${upper.brand} · match unverified`);details.append(brand);}
   const turns=make('input','turns');turns.type='number';turns.min=1;turns.max=1000;turns.step=1;turns.value=b.turns;turns.setAttribute('aria-label',`Band ${i+1} turns`);turns.addEventListener('change',()=>{if(!turns.checkValidity()||!turns.value){turns.reportValidity();turns.value=b.turns;return;}change(()=>b.turns=Number(turns.value));});
   const tools=make('div','band-tools');for(const [label,icon,disabled,fn] of [['Move up','↑',bandBlock(i).end===state.bands.length-1,()=>moveBandBlock(i,true)],['Move down','↓',bandBlock(i).start===0,()=>moveBandBlock(i,false)],['Remove','×',false,()=>state.bands.splice(i,1)]]){const btn=make('button','',icon);btn.title=`${label} band ${i+1}`;btn.setAttribute('aria-label',btn.title);btn.disabled=disabled;btn.onclick=()=>label==='Remove'?change(fn):fn();if(b.group&&label!=='Remove'){btn.title=`${label} group`;btn.setAttribute('aria-label',btn.title);}tools.append(btn);}
   const clone=make('button','clone-band','⧉');clone.title=`Clone band ${i+1}`;clone.setAttribute('aria-label',clone.title);clone.onclick=()=>{if(addBand(b))notify(`Cloned ${b.wrap==='spiral'?'paired spiral':b.name}`);};tools.append(clone);
-  const select=make('input','select-band');select.type='checkbox';select.checked=selectedBands.has(b);select.title=`Select band ${i+1}; Shift-click to select a range`;select.setAttribute('aria-label',select.title);
+  const select=make('input','select-band');select.type='checkbox';select.checked=b.wrap==='spiral'?selectedStrands(b).has('incoming'):selectedBands.has(b);select.title=`Select band ${i+1}${b.wrap==='spiral'?' incoming thread':''}; Shift-click to select a range`;select.setAttribute('aria-label',select.title);
   let shiftSelection=false;
   select.onclick=event=>{shiftSelection=event.shiftKey;};
   select.onchange=()=>{selectBandRange(b,select.checked,shiftSelection);shiftSelection=false;};
@@ -308,9 +354,14 @@ function render(){
    const paired=make('div','spiral-editor');
    paired.append(make('strong','spiral-label','Paired spiral · finished turns'));
    const second=bandColorChip(b,`Band ${i+1} outgoing thread color`);
-   const secondName=make('input','name');secondName.value=b.name;secondName.maxLength=80;secondName.setAttribute('aria-label',`Band ${i+1} outgoing thread name`);secondName.readOnly=true;
+   const secondName=make('span','name',b.name);secondName.title=b.name;
    const direction=make('select','finish');direction.setAttribute('aria-label',`Band ${i+1} spiral direction`);direction.append(new Option('Spiral /','1'),new Option('Spiral \\','-1'));direction.value=b.direction;direction.onchange=()=>change(()=>b.direction=Number(direction.value));
-   paired.append(second,secondName,direction);
+   const outgoing=make('input','select-outgoing');outgoing.type='checkbox';outgoing.checked=selectedStrands(b).has('outgoing');
+   outgoing.title=`Select band ${i+1} outgoing thread; Shift-click to select a range`;outgoing.setAttribute('aria-label',outgoing.title);
+   let outgoingShiftSelection=false;
+   outgoing.onclick=event=>{outgoingShiftSelection=event.shiftKey;};
+   outgoing.onchange=()=>{selectBandRange(b,outgoing.checked,outgoingShiftSelection,'outgoing');outgoingShiftSelection=false;};
+   paired.append(second,secondName,direction,outgoing);
    row.append(paired);
   }else if(!b.group&&i<state.bands.length-1&&!state.bands[i+1].group&&state.bands[i+1].wrap!=='spiral'){
    const transition=make('button','insert-spiral','＋ Spiral into next color');transition.onclick=()=>insertSpiral(i);row.append(transition);

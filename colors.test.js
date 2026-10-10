@@ -138,19 +138,19 @@ test('replace buttons only appear with selected bands and precede the color chip
  const {$,api,context}=workspace();
  api.toggleQuick(red);
  const controls=()=>$('quick-colors').children[0].children;
- assert.equal(controls().length,3);
+ assert.equal(controls().length,5);
  assert.equal(controls()[0].className,'saved-color-choice');
  context.selectedBands.add(context.state.bands[0]);
  let replacement;
  context.replaceSelectedBands=value=>{replacement=value;};
  api.render();
- assert.equal(controls().length,4);
+ assert.equal(controls().length,6);
  assert.equal(controls()[0].className,'color-action color-replace');
  assert.equal(controls()[1].className,'saved-color-choice');
  controls()[0].onclick();
  assert.equal(replacement.sku,red.sku);
  context.selectedBands.clear();api.render();
- assert.equal(controls().length,3);
+ assert.equal(controls().length,5);
  assert.equal(controls()[0].className,'saved-color-choice');
 });
 
@@ -235,6 +235,35 @@ test('palette letters stay attached through additions, removal, and reload',()=>
  assert.equal(colors.letter(25),'Z');assert.equal(colors.letter(26),'AA');
 });
 
+test('quick palette moves reassign letters by shelf order, persist, and leave bands and favorites unchanged',()=>{
+ const {$,api,context,storage}=workspace(JSON.stringify({version:2,favorites:[gold]}),false,{quickColors:[{...gold,paletteLetter:'B'},{...red,paletteLetter:'A'}]});
+ const beforeBands=JSON.stringify(context.state.bands),beforePalette=JSON.parse(JSON.stringify(context.state.quickColors));
+ const move=(row,direction)=>$('quick-colors').children[row].children.find(button=>button.dataset.colorControl?.startsWith(`quick-move-${direction}-`));
+ assert.equal(move(0,'up').disabled,true);assert.equal(move(1,'down').disabled,true);
+ move(0,'up').onclick();assert.deepEqual(JSON.parse(JSON.stringify(context.state.quickColors)),beforePalette);
+ move(1,'up').onclick();
+ assert.deepEqual(Array.from(context.state.quickColors,item=>[item.sku,item.paletteLetter]),[[red.sku,'A'],[gold.sku,'B']]);
+ move(0,'down').onclick();
+ assert.deepEqual(Array.from(context.state.quickColors,item=>[item.sku,item.paletteLetter]),[[gold.sku,'A'],[red.sku,'B']]);
+ assert.equal(colors.parsePattern('1A',context.state.quickColors)[0].sku,gold.sku);
+ assert.equal(JSON.stringify(context.state.bands),beforeBands);assert.ok(api.isFavorite(gold));
+ const reloaded=workspace(null,false,JSON.parse(storage.get('threadwrap-design')));
+ assert.deepEqual(Array.from(reloaded.context.state.quickColors,item=>[item.sku,item.paletteLetter]),[[gold.sku,'A'],[red.sku,'B']]);
+ // Restoring the design snapshot also restores its original order and letter assignments.
+ context.state.quickColors=beforePalette;api.render();
+ assert.deepEqual(Array.from(context.state.quickColors,item=>item.paletteLetter),['B','A']);
+});
+
+test('reordering a large palette reassigns letters beyond Z and refreshes the pattern key',()=>{
+ const quickColors=Array.from({length:28},(_,i)=>({...red,sku:`thread-${i}`,paletteLetter:colors.letter(27-i)}));
+ const {$,context}=workspace(null,false,{quickColors});
+ $('quick-colors').children[27].children.find(button=>button.dataset.colorControl?.startsWith('quick-move-up-')).onclick();
+ assert.deepEqual(Array.from(context.state.quickColors,item=>item.paletteLetter),Array.from({length:28},(_,i)=>colors.letter(i)));
+ assert.equal(context.state.quickColors[26].sku,'thread-27');
+ assert.equal(colors.parsePattern('1AA',context.state.quickColors)[0].sku,'thread-27');
+ assert.equal($('pattern-palette').children[26].children[1].textContent,'AA: Red');
+});
+
 test('typed pattern builds the supplied sequence and both spiral directions',()=>{
  const palette=colors.labelPalette([red,gold,{...red,sku:'third'},{...red,sku:'fourth'}],false);
  const text='12A, 4/AB, 12B, 4/BC, 8C, 2D, 5C, 1D, 2B, 1D, 5C, 2D, 8C, 4/BC, 12B, 4/AB, 12A';
@@ -256,39 +285,117 @@ test('invalid pattern input is rejected before any bands are built',()=>{
  }
 });
 
-test('pattern modal appends or replaces atomically and reports errors without closing',()=>{
- const {$,api,context}=workspace();api.toggleQuick(red);api.toggleQuick(gold);
- $('type-pattern').onclick();assert.equal($('pattern-dialog').open,true);
- $('pattern-text').value='12A, 4/AB';
+test('pattern editor submits only to save and never changes design bands',()=>{
+ const {$,api,context,storage}=workspace();api.toggleQuick(red);api.toggleQuick(gold);
+ $('type-pattern').onclick();$('new-pattern').onclick();
+ const before=JSON.stringify(context.state.bands);
+ $('pattern-text').value='12A, 4/AB';$('pattern-save-name').value='Sequence';
  $('pattern-form').onsubmit({preventDefault(){}});
- assert.equal(context.state.bands.length,4);assert.equal($('pattern-dialog').open,false);
- $('type-pattern').onclick();$('pattern-replace').checked=true;
- $('pattern-text').value='2B';$('pattern-form').onsubmit({preventDefault(){}});
- assert.equal(context.state.bands.length,1);assert.equal(context.state.bands[0].sku,gold.sku);
- $('type-pattern').onclick();$('pattern-text').value='1Z';
+ assert.equal(JSON.stringify(context.state.bands),before);
+ assert.equal(JSON.parse(storage.get('rodloom-named-patterns-v1')).patterns[0].name,'Sequence');
+ $('new-pattern').onclick();
+ $('pattern-text').value='1Z';$('pattern-save-name').value='Invalid';
  $('pattern-form').onsubmit({preventDefault(){}});
- assert.equal(context.state.bands.length,1);assert.equal($('pattern-dialog').open,true);
+ assert.equal(JSON.stringify(context.state.bands),before);
+ assert.equal($('pattern-dialog').open,true);
  assert.match($('pattern-error').textContent,/color Z/);
- $('pattern-replace').checked=false;context.state.bands=Array(100).fill(context.state.bands[0]);
- $('pattern-text').value='1A';$('pattern-form').onsubmit({preventDefault(){}});
- assert.equal(context.state.bands.length,100);assert.match($('pattern-error').textContent,/100 bands/);
+ const html=fs.readFileSync('index.html','utf8');
+ assert.ok(!html.includes('id="pattern-replace"'));
+ assert.ok(!html.includes('>Build bands</button>'));
+ assert.match(html,/id="save-named-pattern" type="submit"[^>]*>Save<\/button>/);
 });
 
-test('named patterns prompt after typing, persist, and load into the modal without building bands',()=>{
+test('named patterns show save fields, persist, and load inline without building bands',()=>{
  const {$,api,storage,context}=workspace();api.toggleQuick(red);
- $('type-pattern').onclick();assert.equal($('pattern-save-prompt').hidden,true);
+ $('type-pattern').onclick();assert.equal($('pattern-save-prompt').hidden,false);
  $('pattern-text').value='12A';$('pattern-text').oninput();
  assert.equal($('pattern-save-prompt').hidden,false);
  $('pattern-save-name').value='Simple';$('save-named-pattern').onclick();
- assert.equal($('pattern-save-prompt').hidden,true);
+ assert.equal($('pattern-save-prompt').hidden,false);
  assert.match($('pattern-save-status').textContent,/saved in this browser/);
  assert.deepEqual(JSON.parse(storage.get('rodloom-named-patterns-v1')).patterns,[{name:'Simple',text:'12A'}]);
  $('pattern-text').value='2A';$('pattern-text').oninput();
  $('save-named-pattern').onclick();assert.match($('pattern-save-status').textContent,/different name/);
  $('pattern-text').value='';$('type-pattern').onclick();
- assert.equal($('named-patterns').children[1].textContent,'Simple');
- $('named-patterns').value='Simple';$('named-patterns').onchange();
+ assert.equal($('named-patterns').children[0].children[0].children[0].textContent,'Simple');
+ $('named-patterns').children[0].children[1].onclick();
  assert.equal($('pattern-text').value,'12A');assert.equal(context.state.bands.length,2);
+ assert.equal($('pattern-dialog').open,true);assert.notEqual($('pattern-list-view').hidden,true);
+ $('pattern-text').value='3A';$('pattern-form').onsubmit({preventDefault(){}});
+ assert.equal($('pattern-dialog').open,false);
+ assert.deepEqual(JSON.parse(storage.get('rodloom-named-patterns-v1')).patterns,[{name:'Simple',text:'3A'}]);
+ $('new-pattern').onclick();assert.equal($('pattern-text').value,'');assert.equal($('pattern-save-name').value,'');
+ assert.equal($('pattern-dialog').open,true);assert.equal(context.state.bands.length,2);
+ $('pattern-cancel').onclick();assert.equal($('pattern-dialog').open,false);
+});
+
+test('pattern list sorts saved names and the tab replaces the old modal and toolbar button',()=>{
+ const {$,storage}=workspace();
+ storage.set('rodloom-named-patterns-v1',JSON.stringify({version:1,patterns:[{name:'Zebra',text:'2A'},{name:'Amber',text:'1A'}]}));
+ $('type-pattern').onclick();
+ assert.deepEqual($('named-patterns').children.map(row=>row.children[0].children[0].textContent),['Amber','Zebra']);
+ const html=fs.readFileSync('index.html','utf8');
+ assert.equal((html.match(/id="type-pattern"/g)||[]).length,1);
+ assert.match(html,/<button id="type-pattern"[^>]*role="tab"[^>]*aria-controls="patterns-panel"/);
+ assert.match(html,/<div id="patterns-panel"[^>]*role="tabpanel"/);
+ assert.match(html,/<dialog id="pattern-dialog" aria-labelledby="pattern-title">/);
+ assert.ok(!html.includes('id="list-patterns"'));
+ assert.match(html,/id="new-pattern"[^>]*title="Create new pattern"[^>]*>＋<\/button>/);
+});
+
+test('saved pattern rows build sequences directly without opening the editor',()=>{
+ const {$,context,storage,messages}=workspace(null,false,{quickColors:[red,gold]});
+ storage.set('rodloom-named-patterns-v1',JSON.stringify({version:1,patterns:[{name:'Paired',text:'12A, 4/AB'}]}));
+ $('type-pattern').onclick();
+ const row=$('named-patterns').children[0];
+ assert.equal(row.tag,'li');
+ assert.equal(row.children[0].children[1].textContent,'12A, 4/AB');
+ assert.equal(row.children[1].attributes['aria-label'],'Edit Paired');
+ row.children[2].onclick();
+ assert.equal(context.state.bands.length,4);
+ assert.equal(context.state.bands[2].turns,12);
+ assert.equal(context.state.bands[3].wrap,'spiral');
+ assert.equal($('pattern-list-view').hidden,undefined);
+ assert.match($('pattern-save-status').textContent,/added to design/);
+ assert.match(messages.at(-1),/Undo/);
+ context.state.quickColors=[];
+ const before=JSON.stringify(context.state.bands);
+ row.children[2].onclick();
+ assert.equal(JSON.stringify(context.state.bands),before);
+ assert.match($('pattern-save-status').textContent,/not in the quick palette/);
+ context.state.quickColors=[red,gold];context.state.bands=Array(100).fill({...red,turns:1});
+ row.children[2].onclick();
+ assert.equal(context.state.bands.length,100);
+ assert.match($('pattern-save-status').textContent,/100 bands/);
+ assert.equal(row.children[3].attributes['aria-label'],'Replace existing bands with Paired');
+ row.children[3].onclick();
+ assert.equal(context.state.bands.length,2);
+ assert.equal(context.state.bands[0].turns,12);
+ assert.equal(context.state.bands[1].wrap,'spiral');
+ assert.match($('pattern-save-status').textContent,/Existing bands replaced/);
+ context.state.quickColors=[];
+ const replaced=JSON.stringify(context.state.bands);
+ row.children[3].onclick();
+ assert.equal(JSON.stringify(context.state.bands),replaced);
+ assert.match($('pattern-save-status').textContent,/not in the quick palette/);
+ assert.ok(!fs.readFileSync('index.html','utf8').includes('pattern-list-help'));
+});
+
+test('saved patterns can be deleted with confirmation without changing design bands',async()=>{
+ const {$,context,storage}=workspace();
+ storage.set('rodloom-named-patterns-v1',JSON.stringify({version:1,patterns:[{name:'Simple',text:'1A'}]}));
+ $('type-pattern').onclick();
+ const before=JSON.stringify(context.state.bands),remove=$('named-patterns').children[0].children[4];
+ assert.equal(remove.attributes['aria-label'],'Delete Simple');
+ context.confirmAction=async()=>false;
+ await remove.onclick();
+ assert.equal(JSON.parse(storage.get('rodloom-named-patterns-v1')).patterns.length,1);
+ context.confirmAction=async()=>true;
+ await remove.onclick();
+ assert.deepEqual(JSON.parse(storage.get('rodloom-named-patterns-v1')).patterns,[]);
+ assert.equal(JSON.stringify(context.state.bands),before);
+ assert.match($('pattern-save-status').textContent,/deleted/);
+ assert.match($('named-patterns').children[0].textContent,/No saved patterns/);
 });
 
 test('named pattern saving validates input and reports blocked storage without claiming success',()=>{
@@ -314,6 +421,11 @@ test('tabs support arrows, Home and End, and storage changes only refresh favori
  assert.equal($('quick-colors-panel').hidden,true);
  $('favorite-colors-tab').onkeydown({key:'Home',preventDefault(){}});
  assert.equal($('quick-colors-tab').tabIndex,0);
+ $('quick-colors-tab').onkeydown({key:'End',preventDefault(){}});
+ assert.equal($('type-pattern').attributes['aria-selected'],'true');assert.equal($('patterns-panel').hidden,false);
+ assert.equal($('favorite-colors-panel').hidden,true);
+ $('type-pattern').onkeydown({key:'ArrowRight',preventDefault(){}});
+ assert.equal($('quick-colors-tab').attributes['aria-selected'],'true');assert.equal($('patterns-panel').hidden,true);
  storage.set('rodloom-colors-v1',JSON.stringify({version:1,quick:[gold],favorites:[red]}));
  listeners.storage({key:'rodloom-colors-v1'});
  assert.equal($('quick-color-count').textContent,1);

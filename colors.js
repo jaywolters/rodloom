@@ -106,10 +106,21 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    change(()=>{state.quickColors=colors.labelPalette(next);});
   }else{library.favorites=next;save();}
  }
- function selectTab(favorites,focus=false){
-  for(const [name,selected] of [['quick',!favorites],['favorite',favorites]]){
-   const tab=$(`${name}-colors-tab`);tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;
-   $(`${name}-colors-panel`).hidden=!selected;if(selected&&focus)tab.focus();
+ const paletteTabs=[['quick','quick-colors-tab','quick-colors-panel'],['favorite','favorite-colors-tab','favorite-colors-panel'],['patterns','type-pattern','patterns-panel']];
+ function moveQuick(value,offset){
+  const next=collection('quick'),index=next.findIndex(item=>colors.key(item)===colors.key(value)),target=index+offset;
+  if(index<0||target<0||target>=next.length)return;
+  [next[index],next[target]]=[next[target],next[index]];
+  change(()=>{state.quickColors=next.map((item,index)=>({...item,paletteLetter:colors.letter(index)}));});
+  notify('Palette reordered and letters reassigned. Existing bands are unchanged. Undo to restore.');
+ }
+ function selectTab(name,focus=false){
+  for(const [key,tabId,panelId] of paletteTabs){
+   const selected=key===name,tab=$(tabId);tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;
+   $(panelId).hidden=!selected;if(selected&&focus)tab.focus();
+  }
+  if(name==='patterns'){
+   $('pattern-save-status').textContent='';loadNamedPatterns();renderNamedPatterns();askToSavePattern();renderPatternPalette();
   }
  }
  function revealQuick(value){
@@ -118,7 +129,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   highlightedQuick=colors.key(color);
   if(!contains('quick',color))change(()=>{state.quickColors=colors.labelPalette([color,...collection('quick')]);});
   else render();
-  selectTab(false);
+  selectTab('quick');
   $('quick-colors-panel').closest('details').open=true;
   const row=[...$('quick-colors').children].find(el=>el.dataset.colorKey===highlightedQuick);
   if(row){[...row.children].find(el=>el.className==='saved-color-choice').focus({preventScroll:true});row.scrollIntoView({block:'center',inline:'nearest'});}
@@ -133,9 +144,9 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const button=make('button','color-action',text);button.type='button';button.title=label;button.setAttribute('aria-label',label);button.onclick=fn;button.dataset.colorControl=id;return button;
  }
  function renderShelf(section,id){
-  const list=$(id);list.replaceChildren();
-  if(!collection(section).length){list.append(make('p','color-empty',section==='quick'?'Collect threads with + Palette in the catalog, or clone the colors from your design.':'No favorites yet. Star a color in your quick palette or the catalog.'));return;}
-  for(const value of collection(section)){
+  const list=$(id),values=collection(section);list.replaceChildren();
+  if(!values.length){list.append(make('p','color-empty',section==='quick'?'Collect threads with + Palette in the catalog, or clone the colors from your design.':'No favorites yet. Star a color in your quick palette or the catalog.'));return;}
+  for(const [index,value] of values.entries()){
    const identity=colors.key(value),row=make('div',section==='quick'&&identity===highlightedQuick?'saved-color quick-highlight':'saved-color');
    row.dataset.colorKey=identity;
    const choose=action(`Add ${section==='quick'?value.paletteLetter+': ':''}${value.name} — ${describe(value)}`,'',()=>add(value),`${section}-add-${identity}`);choose.className='saved-color-choice';
@@ -152,6 +163,10 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    star.setAttribute('aria-pressed',String(favorite));row.append(star);
    if(section==='quick'){
     row.append(action(`Remove ${value.name} from this design's quick palette`,'×',()=>toggle('quick',value),`${section}-remove-${identity}`));
+    for(const [offset,label,symbol] of [[-1,'up','↑'],[1,'down','↓']]){
+     const move=action(`Move ${value.name} ${label} and reassign palette letters`,symbol,()=>moveQuick(value,offset),`quick-move-${label}-${identity}`);
+     move.disabled=index+offset<0||index+offset>=values.length;row.append(move);
+    }
    }
    else{
     const collected=contains('quick',value);
@@ -173,7 +188,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   }
   $('clear-quick-colors').disabled=!collection('quick').length;
   $('quick-color-count').textContent=collection('quick').length;$('favorite-color-count').textContent=library.favorites.length;
-  renderShelf('quick','quick-colors');renderShelf('favorites','favorite-colors');
+  renderShelf('quick','quick-colors');renderShelf('favorites','favorite-colors');renderPatternPalette();
   window.dispatchEvent(new Event('colorschange'));
   if(focused){
    const control=[...document.querySelectorAll('[data-color-control]')].find(el=>el.dataset.colorControl===focused);
@@ -189,34 +204,70 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const threads=colors.fromBands(state.bands),before=collection('quick').length;
   const combined=colors.unique([...collection('quick'),...threads]);
   if(combined.length!==before)change(()=>{state.quickColors=colors.labelPalette(combined,false);});
-  selectTab(false);
+  selectTab('quick');
   const omitted=threads.some(value=>!contains('quick',value));
   notify(omitted?`Palette limit reached (${colors.limit} colors). Remove colors to collect more.`:`${combined.length-before} new colors collected · click any swatch to reuse it`);
  };
  const patternsKey='rodloom-named-patterns-v1';
- let namedPatterns=[],patternsAvailable=true;
+ let namedPatterns=[],patternsAvailable=true,editingPatternName=null;
  function loadNamedPatterns(){
   try{namedPatterns=colors.decodePatterns(localStorage.getItem(patternsKey));patternsAvailable=true;}
   catch{patternsAvailable=false;$('pattern-save-status').textContent='Saved patterns are unavailable. Check browser storage before saving.';}
  }
- function renderNamedPatterns(selected=''){
-  const select=$('named-patterns');select.replaceChildren();
-  const placeholder=make('option','','Choose a saved pattern…');placeholder.value='';select.append(placeholder);
-  for(const pattern of namedPatterns){const option=make('option','',pattern.name);option.value=pattern.name;select.append(option);}
-  select.value=selected;
+ function renderNamedPatterns(){
+  const list=$('named-patterns');list.replaceChildren();
+  if(!namedPatterns.length)list.append(make('li','color-empty','No saved patterns. Create a new pattern to start.'));
+  for(const pattern of namedPatterns.slice().sort((a,b)=>a.name.localeCompare(b.name))){
+   const row=make('li','saved-pattern'),label=make('div','saved-pattern-label');
+   const sequence=make('small','',pattern.text.replace(/\s*\n\s*/g,', '));sequence.title=pattern.text;
+   label.append(make('strong','',pattern.name),sequence);
+   const edit=action(`Edit ${pattern.name}`,'✎',()=>editPattern(pattern),`pattern-edit-${pattern.name}`);
+   const build=action(`Build ${pattern.name} — append sequence to design`,'▶',()=>{
+    $('pattern-save-status').textContent='';
+    try{buildPattern(pattern.text,false);$('pattern-save-status').textContent=`Pattern “${pattern.name}” added to design.`;}
+    catch(error){$('pattern-save-status').textContent=error.message;}
+   },`pattern-build-${pattern.name}`);
+   const replace=action(`Replace existing bands with ${pattern.name}`,'⇄',()=>{
+    $('pattern-save-status').textContent='';
+    try{buildPattern(pattern.text,true);$('pattern-save-status').textContent=`Existing bands replaced with pattern “${pattern.name}”.`;}
+    catch(error){$('pattern-save-status').textContent=error.message;}
+   },`pattern-replace-${pattern.name}`);
+   const remove=action(`Delete ${pattern.name}`,'×',()=>deletePattern(pattern),`pattern-delete-${pattern.name}`);
+   row.append(label,edit,build,replace,remove);list.append(row);
+  }
  }
- function askToSavePattern(){
-  const text=$('pattern-text').value.trim();
-  $('pattern-save-prompt').hidden=!text||namedPatterns.some(pattern=>pattern.text===text);
- }
- $('named-patterns').onchange=()=>{
-  const pattern=namedPatterns.find(item=>item.name===$('named-patterns').value);
-  if(!pattern)return;
-  $('pattern-text').value=pattern.text;$('pattern-save-name').value=pattern.name;
-  $('pattern-error').textContent='';$('pattern-save-status').textContent='';askToSavePattern();
- };
- $('save-named-pattern').onclick=()=>{
+ async function deletePattern(pattern){
+  if(!await confirmAction(`Delete “${pattern.name}” from saved patterns? This cannot be undone.`,'Delete saved pattern','Delete'))return;
   $('pattern-save-status').textContent='';
+  try{
+   loadNamedPatterns();
+   if(!patternsAvailable)throw Error('Saved patterns are unavailable. Check browser storage before deleting.');
+   const next=namedPatterns.filter(item=>item.name!==pattern.name);
+   localStorage.setItem(patternsKey,JSON.stringify({version:1,patterns:next}));
+   namedPatterns=next;renderNamedPatterns();$('new-pattern').focus();
+   $('pattern-save-status').textContent=`Pattern “${pattern.name}” deleted.`;
+  }catch(error){$('pattern-save-status').textContent=error.message;}
+ }
+ function openPatternEditor(){
+  $('pattern-title').textContent=editingPatternName?'Edit pattern':'Create new pattern';
+  renderPatternPalette();$('pattern-dialog').showModal();$('pattern-text').focus();
+ }
+ $('pattern-cancel').onclick=()=>{$('pattern-dialog').close();};
+ $('new-pattern').onclick=()=>{
+  editingPatternName=null;
+  $('pattern-text').value='';$('pattern-save-name').value='';
+  $('pattern-error').textContent='';$('pattern-save-status').textContent='';askToSavePattern();openPatternEditor();
+ };
+ function askToSavePattern(){
+  $('pattern-save-prompt').hidden=false;
+ }
+ function editPattern(pattern){
+  editingPatternName=pattern.name;
+  $('pattern-text').value=pattern.text;$('pattern-save-name').value=pattern.name;
+  $('pattern-error').textContent='';$('pattern-save-status').textContent='';askToSavePattern();openPatternEditor();
+ }
+ function saveNamedPattern(){
+  $('pattern-error').textContent='';$('pattern-save-status').textContent='';
   try{
    loadNamedPatterns();
    if(!patternsAvailable)throw Error('Saved patterns are unavailable. Check browser storage before saving.');
@@ -225,47 +276,48 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    if(text.length>10000)throw Error('Pattern text is too long.');
    colors.parsePattern(text,collection('quick'));
    const existing=namedPatterns.find(pattern=>pattern.name.toLowerCase()===name.toLowerCase());
-   if(existing&&existing.text!==text)throw Error('That pattern name is already saved. Choose a different name.');
-   if(!existing&&namedPatterns.length>=100)throw Error('Maximum 100 named patterns saved.');
-   const next=existing?namedPatterns:[...namedPatterns,{name,text}];
+   if(existing&&existing.name!==editingPatternName&&existing.text!==text)throw Error('That pattern name is already saved. Choose a different name.');
+   if(existing&&editingPatternName&&existing.name!==editingPatternName)throw Error('That pattern name is already saved. Choose a different name.');
+   const remaining=namedPatterns.filter(pattern=>pattern.name!==editingPatternName);
+   if(!existing&&remaining.length>=100)throw Error('Maximum 100 named patterns saved.');
+   const next=existing&&!editingPatternName?namedPatterns:[...remaining,{name,text}];
    localStorage.setItem(patternsKey,JSON.stringify({version:1,patterns:next}));
-   namedPatterns=next;renderNamedPatterns(existing?existing.name:name);askToSavePattern();
+   namedPatterns=next;renderNamedPatterns();askToSavePattern();
    $('pattern-save-status').textContent=`Pattern “${name}” saved in this browser.`;
-  }catch(error){$('pattern-save-status').textContent=error.message;}
- };
- $('type-pattern').onclick=()=>{
-  render();
-  $('pattern-save-status').textContent='';loadNamedPatterns();renderNamedPatterns();
-  askToSavePattern();
+   $('pattern-dialog').close();editingPatternName=null;
+  }catch(error){$('pattern-error').textContent=error.message;$('pattern-save-status').textContent=error.message;}
+ }
+ $('save-named-pattern').onclick=event=>{event?.preventDefault();saveNamedPattern();};
+ function renderPatternPalette(){
   const legend=$('pattern-palette');legend.replaceChildren();
   for(const value of collection('quick').slice().sort((a,b)=>a.paletteLetter.length-b.paletteLetter.length||a.paletteLetter.localeCompare(b.paletteLetter))){
    const entry=make('span','pattern-color');entry.append(swatch(value),make('span','',`${value.paletteLetter}: ${value.name}`));legend.append(entry);
   }
   if(!collection('quick').length)legend.append(make('p','hint','Add colors to your quick palette first.'));
-  $('pattern-error').textContent='';$('pattern-dialog').showModal();$('pattern-text').focus();
- };
- $('pattern-cancel').onclick=()=>$('pattern-dialog').close();
+ }
+ function buildPattern(text,replace){
+  const bands=colors.parsePattern(text,collection('quick'));
+  if((replace?0:state.bands.length)+bands.length>100)throw Error('This would exceed 100 bands. Use Replace instead, or shorten the pattern.');
+  change(()=>{state.bands=replace?bands:[...state.bands,...bands];selectedBands.clear();});
+  $('pattern-error').textContent='';$('bands').closest('details').open=true;
+  notify(`${bands.length} bands ${replace?'built':'added'} from pattern. Undo to restore the previous design.`);
+ }
  $('pattern-form').onsubmit=event=>{
   event.preventDefault();
-  try{
-   const bands=colors.parsePattern($('pattern-text').value,collection('quick'));
-   const replace=$('pattern-replace').checked;
-   if((replace?0:state.bands.length)+bands.length>100)throw Error('This would exceed 100 bands. Choose Replace existing bands or shorten the pattern.');
-   change(()=>{state.bands=replace?bands:[...state.bands,...bands];selectedBands.clear();});
-   $('pattern-dialog').close();$('bands').closest('details').open=true;
-   notify(`${bands.length} bands ${replace?'built':'added'} from pattern. Undo to restore the previous design.`);
-  }catch(error){$('pattern-error').textContent=error.message;}
+  saveNamedPattern();
  };
- $('pattern-text').oninput=()=>{$('pattern-error').textContent='';$('pattern-save-status').textContent='';$('named-patterns').value='';askToSavePattern();};
+ $('pattern-text').oninput=()=>{$('pattern-error').textContent='';$('pattern-save-status').textContent='';askToSavePattern();};
  $('browse-colors').onclick=()=>{
   document.querySelector('.palette-lookup').open=true;
   $('color-search').focus();$('color-search').scrollIntoView({block:'nearest'});
  };
- for(const [name,favorites] of [['quick',false],['favorite',true]]){
-  const tab=$(`${name}-colors-tab`);tab.onclick=()=>selectTab(favorites);
+ for(const [index,[name,tabId]] of paletteTabs.entries()){
+  const tab=$(tabId);tab.onclick=()=>selectTab(name);
   tab.onkeydown=event=>{
    if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){
-    event.preventDefault();selectTab(event.key==='Home'?false:event.key==='End'?true:!favorites,true);
+    event.preventDefault();
+    const next=event.key==='Home'?0:event.key==='End'?paletteTabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+paletteTabs.length)%paletteTabs.length;
+    selectTab(paletteTabs[next][0],true);
    }
   };
  }

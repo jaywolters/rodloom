@@ -227,7 +227,7 @@ summary:hover{color:var(--blue)}
 .band>.band-tools{grid-column:6;grid-row:1}
 .band-details>.brand-note{grid-column:4/-1;grid-row:2;min-width:0}
 .band .band-color-chip{height:27px;width:25px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer}
-.band input.name{font-size:11px;padding:4px 5px;border-color:transparent;background:var(--subtle)}
+.band .name{display:block;min-width:0;font-size:11px;padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .band input.turns{font-size:11px;padding:4px 2px 4px 5px;font-variant-numeric:tabular-nums}
 .brand-note{display:block;font-size:9px;color:var(--muted);overflow-wrap:anywhere}
 .drag-handle{border:0;background:transparent;padding:4px 0;color:var(--muted);font-size:18px;cursor:grab;touch-action:none;user-select:none}
@@ -238,15 +238,24 @@ summary:hover{color:var(--blue)}
 .band.drop-before,.band-group.drop-before{box-shadow:0 -2px 0 var(--blue)}
 .band.drop-after,.band-group.drop-after{box-shadow:0 2px 0 var(--blue)}
 .block-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
-.block-actions button{font-size:11px;padding:6px 8px}
+.block-actions .icon-button{padding:5px}
 #block-status{flex-basis:100%;font-size:11px;color:var(--muted)}
+.band-context-menu{position:fixed;z-index:10001;min-width:180px;max-width:calc(100vw - 8px);padding:4px;background:var(--white);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 4px 16px #0004}
+.band-context-menu[hidden]{display:none}
+.band-context-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border:0;background:transparent;text-align:left;font-size:12px}
+.band-context-menu button:not(:disabled):hover,.band-context-menu button:focus-visible{background:var(--selected)}
+.band-context-menu svg{width:17px;height:17px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .band-tools{display:flex;flex-wrap:wrap;gap:0}
 .band>.select-band{width:16px;height:16px;margin:0;accent-color:var(--ink);cursor:pointer}
 .band-tools button{width:20px;height:25px;border:0;padding:3px 1px;font-size:13px;background:transparent;color:var(--muted)}
 .band-tools .clone-band{order:-1;font-size:16px;color:var(--ink)}
 .insert-spiral{position:absolute;top:0;left:50%;transform:translate(-50%,-50%);z-index:1;padding:0 7px;border:1px solid var(--line);border-radius:3px;background:var(--subtle);color:var(--muted);font-size:9px;line-height:15px;white-space:nowrap}
 .spiral-band{background:var(--subtle)}
-.spiral-editor{grid-column:3/-1;display:grid;grid-template-columns:25px minmax(0,1fr) auto;gap:5px;align-items:center;padding-bottom:3px}
+.spiral-editor{grid-column:2/-1;display:grid;grid-template-columns:16px 25px minmax(0,1fr) auto;gap:5px;align-items:center;padding-bottom:3px}
+.spiral-editor>.select-outgoing{grid-column:1;grid-row:2;width:16px;height:16px;margin:0;accent-color:var(--ink);cursor:pointer}
+.spiral-editor>.band-color-chip{grid-column:2;grid-row:2}
+.spiral-editor>.name{grid-column:3;grid-row:2}
+.spiral-editor>.finish{grid-column:4;grid-row:2}
 .spiral-label{grid-column:1/-1;font-weight:400;font-size:9px;color:var(--muted)}
 .spiral-editor .finish{font-size:10px;padding:3px;background:var(--field)}
 .thread-design>.hint{margin-top:8px}
@@ -254,22 +263,31 @@ footer{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 #toast{position:fixed;z-index:20;bottom:28px;left:50%;transform:translateX(-50%);max-width:90vw;padding:10px 16px;border:1px solid var(--line);border-radius:4px;box-shadow:0 4px 20px #0003;background:var(--ink);color:var(--field);font-size:12px;text-align:center;opacity:0;pointer-events:none}
 #toast.visible{opacity:1}
 .palette-letter{flex-shrink:0;font-size:15px;font-weight:600;line-height:1;color:var(--ink)}
-.pattern-entry-action{display:flex;align-items:center;gap:10px;margin:10px 0}
-#pattern-dialog{width:min(620px,calc(100% - 32px));max-height:90vh;overflow:auto;padding:22px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--ink);box-shadow:0 18px 70px #0005}
+#patterns-panel{padding:12px}
+#patterns-panel[hidden]{display:none}
+#pattern-dialog{width:min(560px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;box-sizing:border-box;padding:22px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--ink);box-shadow:0 18px 70px #0005}
 #pattern-dialog::backdrop{background:#0009}
-#pattern-dialog h2{font-size:16px}
+#pattern-dialog :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+#pattern-title{font-size:14px;margin-top:0}
+.pattern-panel-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pattern-panel-actions button{font-size:20px;line-height:1;min-width:36px;min-height:36px}
+.pattern-build-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
 #pattern-help{margin:12px 0}
 #pattern-palette{display:flex;flex-wrap:wrap;gap:10px 16px;margin:16px 0;max-height:160px;overflow:auto}
 .pattern-color{display:flex;align-items:center;gap:6px;font-size:12px}
 #pattern-text{display:block;width:100%;box-sizing:border-box;resize:vertical;margin:6px 0;padding:10px;border:1px solid var(--line);border-radius:3px;background:var(--white);color:var(--ink);font:14px/1.6 monospace}
-#named-patterns{display:block;width:100%;margin:6px 0 10px}
+#named-patterns{display:block;width:100%;margin:6px 0 10px;padding:0;list-style:none}
+.saved-pattern{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.saved-pattern-label{flex:1;min-width:120px;display:flex;flex-direction:column;gap:4px}
+.saved-pattern-label strong{font-size:13px;overflow-wrap:anywhere}
+.saved-pattern-label small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #pattern-save-prompt{margin-top:14px}
 .pattern-save-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 #pattern-save-name{flex:1;min-width:140px}
 #pattern-save-status{margin-top:8px;color:var(--muted)}
 .pattern-replace{display:flex;align-items:center;gap:8px;margin-top:14px}
 #pattern-error{color:var(--ink);font-weight:600;margin-top:10px}
-#pattern-dialog :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+#patterns-panel :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #confirm-dialog{width:min(440px,calc(100% - 32px));padding:22px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--ink);box-shadow:0 18px 70px #0005}
 #confirm-dialog h2{font-size:15px}
 #confirm-dialog p{margin-top:12px}
@@ -381,7 +399,7 @@ td{padding:10px 16px;border-top:1px solid var(--line);font-variant-numeric:tabul
  .recipe table{min-width:640px}
 }
 @media print{
- header,.design-column,#designer,#pdf-hint,footer,#toast,#confirm-dialog,#pattern-dialog,.recipe-actions{display:none!important}
+ header,.design-column,#designer,#pdf-hint,footer,#toast,#confirm-dialog,.recipe-actions{display:none!important}
  body,main{background:white;padding:0;color:#222}
  #recipe-page{display:block!important;margin:0;border:0}
  #recipe-image{break-inside:avoid;max-height:85mm;object-fit:contain}

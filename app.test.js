@@ -47,7 +47,7 @@ function editor(){
  context.render();
  return {context,state,list:$('bands')};
 }
-const names=list=>list.querySelectorAll('.band').map(row=>row.children[3].children[0].value);
+const names=list=>list.querySelectorAll('.band').map(row=>row.children[3].children[0].textContent);
 
 function blankDesignEditor(unsaved){
  const result=editor(),{context}=result;
@@ -125,6 +125,39 @@ test('Shift-click selects and deselects inclusive band ranges without changing t
  assert.equal(context.selectedBands.size,3);
  assert.equal(JSON.stringify(state),before);
  assert.equal(context.history.length,0);
+});
+
+test('Shift-click ranges include both spiral strands from either checkbox',()=>{
+ const {context,state,list}=editor();
+ context.insertSpiral(0);
+ const before=JSON.stringify(state),historyLength=context.history.length;
+ const click=(index,strand,checked,shiftKey=false)=>{
+  const row=list.querySelectorAll('.band').find(row=>Number(row.dataset.index)===index);
+  const checkbox=row.querySelector(strand==='outgoing'?'.select-outgoing':'.select-band');
+  checkbox.checked=checked;checkbox.onclick({shiftKey});checkbox.onchange();
+ };
+ const assertBoth=checked=>{
+  const row=list.querySelectorAll('.band').find(row=>Number(row.dataset.index)===1);
+  assert.equal(row.querySelector('.select-band').checked,checked);
+  assert.equal(row.querySelector('.select-outgoing').checked,checked);
+ };
+ click(0,'incoming',true);click(2,'incoming',true,true);
+ assertBoth(true);
+ click(2,'incoming',false,true);
+ assertBoth(false);assert.equal(context.selectedBands.size,0);
+ click(1,'outgoing',true);
+ assert.equal(context.selectedStrands(state.bands[1]).has('incoming'),false);
+ click(0,'incoming',true,true);
+ assertBoth(true);
+ click(1,'outgoing',false,true);
+ assertBoth(false);assert.equal(context.selectedBands.size,1);
+ click(0,'incoming',false);
+ click(0,'incoming',true);click(1,'outgoing',true,true);
+ assertBoth(true);
+ click(1,'outgoing',false,true);
+ assertBoth(false);assert.equal(context.selectedBands.size,0);
+ assert.equal(JSON.stringify(state),before);
+ assert.equal(context.history.length,historyLength);
 });
 
 test('group names are editable, undoable, copied independently, and removed on ungroup',()=>{
@@ -373,12 +406,56 @@ test('select same color matches catalog threads, supports multiple colors, and m
  context.selectedBands.add(state.bands[0]);context.render();
  assert.equal(context.$('select-same-color').disabled,false);
  context.$('select-same-color').onclick();
- assert.deepEqual([...context.selectedBands],[state.bands[0],state.bands[2],state.bands[5]]);
+ assert.deepEqual([...context.selectedBands],[state.bands[0],state.bands[2],state.bands[5],state.bands[6]]);
+ assert.equal(context.selectedStrands(state.bands[5]).has('incoming'),true);
+ assert.equal(context.selectedStrands(state.bands[6]).has('outgoing'),true);
+ assert.equal(context.selectedStrands(state.bands[6]).has('incoming'),false);
  context.selectedBands.add(state.bands[1]);context.selectSameColor();
- assert.deepEqual([...context.selectedBands],[state.bands[0],state.bands[1],state.bands[2],state.bands[5]]);
+ assert.deepEqual([...context.selectedBands],[state.bands[0],state.bands[1],state.bands[2],state.bands[5],state.bands[6]]);
  assert.equal(context.history.length,0);
  context.$('clear-band-selection').onclick();
  assert.equal(context.$('select-same-color').disabled,true);
+});
+
+test('context color matching targets the clicked spiral strand rather than other selections',()=>{
+ const {context,state}=editor();
+ const thread=sku=>({name:sku,brand:'ProWrap',line:'Nylon',sku,color:'#123456',turns:1});
+ const spiral={...thread('green'),wrap:'spiral',secondary:thread('silver'),direction:1};
+ state.bands=[thread('green'),thread('silver'),spiral];context.render();
+ context.selectSpiralStrand(spiral,'incoming',true);
+ context.selectSameColor([spiral]);
+ assert.deepEqual([...context.selectedBands],[state.bands[0],spiral]);
+ assert.equal(context.selectedStrands(spiral).has('outgoing'),true);
+ assert.equal(context.selectedStrands(spiral).has('incoming'),false);
+ context.selectSameColor([spiral.secondary]);
+ assert.deepEqual([...context.selectedBands],[state.bands[1],spiral]);
+ assert.equal(context.selectedStrands(spiral).has('incoming'),true);
+ assert.equal(context.selectedStrands(spiral).has('outgoing'),false);
+ assert.equal(context.history.length,0);
+});
+
+test('spiral checkboxes select and replace either strand independently',()=>{
+ const {context,state,list}=editor();
+ context.insertSpiral(0);
+ const spiral=state.bands[1];
+ const row=list.querySelectorAll('.band').find(row=>Number(row.dataset.index)===1);
+ const outgoing=row.querySelector('.select-outgoing');
+ assert.equal(outgoing.checked,false);
+ outgoing.checked=true;outgoing.onchange();
+ assert.equal(row.querySelector('.select-band').checked,false);
+ assert.equal(context.selectedBands.has(spiral),true);
+ const replacement={name:'White',color:'#ffffff',brand:'ProWrap',sku:'807',catalog:true,finish:'regular',line:'Nylon'};
+ const incoming=structuredClone(spiral.secondary),turns=spiral.turns;
+ context.replaceSelectedBands(replacement);
+ assert.equal(spiral.name,'White');assert.deepEqual(spiral.secondary,incoming);
+ assert.equal(spiral.turns,turns);assert.equal(spiral.direction,1);
+ context.selectBandRange(spiral,true);
+ context.replaceSelectedBands({...replacement,name:'Red',color:'#ff0000'});
+ assert.equal(spiral.name,'Red');assert.equal(spiral.secondary.name,'Red');
+ context.selectBandRange(spiral,false);
+ assert.equal(context.selectedBands.has(spiral),true);
+ context.selectSpiralStrand(spiral,'outgoing',false);
+ assert.equal(context.selectedBands.has(spiral),false);
 });
 
 test('cloning respects the design band limit',()=>{
@@ -407,7 +484,7 @@ test('dragging maps visual insertion positions back to wrap order',()=>{
   handle.listeners.pointermove({clientY:y});
   handle.listeners.pointerup({type:'pointerup'});
   assert.deepEqual(names(list),expected);
-  assert.equal(list.children.find(row=>row.children[0].focused).children[3].children[0].value,from===2?'A':'C');
+  assert.equal(list.children.find(row=>row.children[0].focused).children[3].children[0].textContent,from===2?'A':'C');
  }
 });
 
@@ -678,5 +755,5 @@ test('spirals keep wrap order but display incoming above outgoing to match neigh
  const paired=spiral.children[6];
  assert.equal(spiral.children[2].style.background,state.bands[1].secondary.color);
  assert.equal(paired.children[1].style.background,state.bands[1].color);
- assert.equal(paired.children[2].value,'A');
+ assert.equal(paired.children[2].textContent,'A');
 });
