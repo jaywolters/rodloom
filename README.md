@@ -4,6 +4,8 @@ A browser workbench for designing fishing-rod thread wraps with solid bands and 
 
 **[Open Rod Loom](https://main.dnpxbg1xuqcc.amplifyapp.com)**
 
+![Rod Loom designer showing the Dorado wrap preview, design library, and thread bands](docs/images/rod-loom-screenshot.png)
+
 ## Design a wrap
 
 1. Choose a pattern from **Design library**, or start a blank design.
@@ -18,7 +20,7 @@ A browser workbench for designing fishing-rod thread wraps with solid bands and 
 
 - Shaded rod and flat layouts, with Bottom, Side, and Top views.
 - Calibrated actual size, Fit to window, and 1×–8× zoom.
-- Adjustable thread coverage and blank diameter under **Display scale & calibration**.
+- Size A/D selection, adjustable thread coverage and blank diameter under **Display scale & calibration**. Size is stored per design; same-name A and D versions save separately. Converting a populated design requires confirmation and preserves turns, not physical widths; Undo restores the original.
 - PNG export and a printable wrapping recipe with dimensions and estimated thread usage.
 - JSON import/export for backups and sharing.
 
@@ -36,7 +38,7 @@ Design data stays in your browser. Clearing site data removes local saves, so ex
 
 Catalog photos, product details, and stock flags are bundled snapshots from Mud Hole. Preview colors are estimates sampled from photos; use physical thread charts for color decisions. Metallic and neon rendering is illustrative.
 
-The initial 0.25 mm thread coverage is an editable estimate. Measure a test wrap for your thread. Dimensions and thread usage are planning estimates; usage excludes setup turns, tag ends, and waste. Paired spiral counts represent finished paired revolutions. Fit, PNG exports, and printed recipes are not calibrated life-size.
+Initial coverage estimates are 0.25 mm for Size D and 0.15 mm for Size A. Catalog photos and product links remain Size D references; verify corresponding Size A products separately. Measure a test wrap for your thread. Dimensions and thread usage are planning estimates; usage excludes setup turns, tag ends, and waste. Paired spiral counts represent finished paired revolutions. Fit, PNG exports, and printed recipes are not calibrated life-size.
 
 ## Run locally
 

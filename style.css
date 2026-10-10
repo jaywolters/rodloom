@@ -100,8 +100,11 @@ summary:hover{color:var(--blue)}
 #calibration-ruler span{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:10px;white-space:nowrap}
 .setup{border-top:1px solid var(--line);padding:10px 12px}
 .setup p{font-size:10px;max-width:80ch}
-.setup-fields{display:flex;gap:12px;margin:10px 0}
-.setup-fields label{display:flex;flex:1;flex-direction:column;gap:5px;color:var(--muted);font-size:11px}
+.setup-fields{display:grid;grid-template-columns:minmax(0,140px) minmax(0,180px);gap:12px;margin:10px 0}
+.setup-fields .blank-diameter{grid-column:1 / -1}
+.setup-fields label{display:flex;flex-direction:column;align-items:flex-start;gap:5px;color:var(--muted);font-size:11px}
+.setup-fields input{width:90px;max-width:100%}
+.setup-fields select{width:140px;max-width:100%}
 .design-tools{background:var(--white)}
 .palette-lookup{padding:0 10px}
 .palette-lookup[open]{padding-bottom:8px}

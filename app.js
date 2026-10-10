@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const isCatalogThread = b => b && b.catalog===true && ['Fuji','ProWrap'].includes(b.brand) && typeof b.sku==='string' && !!b.sku;
 const standardDesigns=window.RODLOOM_STANDARD_DESIGNS;
-let state = structuredClone(standardDesigns[0]);
+let state = {...structuredClone(standardDesigns[0]),threadSize:'D'};
 let mode='rod', rodSide='bottom', history=[], toastTimer;
 let selectedBands=new Set(), bandClipboard=[];
 let displayScale='actual', screenScale=3.25, zoom=1;
@@ -60,6 +60,7 @@ $('measured-ruler').oninput=()=>$('measured-ruler').setCustomValidity('');
 const validColor = c => typeof c==='string' && /^#[0-9a-f]{6}$/i.test(c);
 function validate(s){
  if(!s || typeof s.name!=='string' || s.name.length>80 || !Array.isArray(s.bands) || s.bands.length>100) throw Error('Invalid design');
+ if(s.threadSize!==undefined&&!['A','D'].includes(s.threadSize))throw Error('Invalid thread size');
  if(!Number.isFinite(s.coverage)||s.coverage<.05||s.coverage>1||!Number.isFinite(s.diameter)||s.diameter<1||s.diameter>50||!validColor(s.blank)) throw Error('Invalid dimensions');
  for(const b of s.bands) if(!b || typeof b.name!=='string'||b.name.length>80||!validColor(b.color)||!Number.isInteger(b.turns)||b.turns<1||b.turns>1000||!['regular','metallic','neon'].includes(b.finish)||typeof b.brand!=='string'||b.brand.length>40) throw Error('Invalid band');
  for(const b of s.bands){
@@ -71,14 +72,14 @@ function validate(s){
   }
  }
  if(s.quickColors!==undefined&&(!Array.isArray(s.quickColors)||s.quickColors.length>500||s.quickColors.some(c=>!isCatalogThread(c)||typeof c.name!=='string'||c.name.length>80||!validColor(c.color)||!['regular','metallic','neon'].includes(c.finish)||c.sku.length>160||['line','code'].some(field=>c[field]!==undefined&&(typeof c[field]!=='string'||c[field].length>160)))))throw Error('Invalid quick palette');
- return {version:1,name:s.name,coverage:s.coverage,diameter:s.diameter,blank:s.blank,texture:!!s.texture,bands:s.bands.map(b=>({...b})),...(s.quickColors!==undefined?{quickColors:s.quickColors.map(c=>({...c}))}:{})};
+ return {version:1,name:s.name,threadSize:s.threadSize||'D',coverage:s.coverage,diameter:s.diameter,blank:s.blank,texture:!!s.texture,bands:s.bands.map(b=>({...b})),...(s.quickColors!==undefined?{quickColors:s.quickColors.map(c=>({...c}))}:{})};
 }
 try {const saved=localStorage.getItem('threadwrap-design');if(saved) state=validate(JSON.parse(saved));} catch { /* Start with the default if stored data is unavailable. */ }
 let cleanDesign=localStorageBaseline();
 function localStorageBaseline(){
  try{
   const baseline=localStorage.getItem('threadwrap-clean-design');
-  if(baseline)return baseline;
+  if(baseline)return JSON.stringify(validate(JSON.parse(baseline)));
   const initial=JSON.stringify(state);localStorage.setItem('threadwrap-clean-design',initial);return initial;
  }catch{return JSON.stringify(state);}
 }
@@ -113,10 +114,10 @@ function readLibrary(){
  return designs.filter(design=>Array.isArray(design.bands)&&design.bands.every(b=>isCatalogThread(b)&&(b.wrap!=='spiral'||isCatalogThread(b.secondary)))).map(validate);
 }
 function renderLibrary(){renderStartingPoints();}
-async function deleteDesign(name){
- if(!await confirmAction(`Delete “${name}” from this browser? This cannot be undone.`,'Delete saved design','Delete'))return;
+async function deleteDesign(name,threadSize='D'){
+ if(!await confirmAction(`Delete “${name}” (Size ${threadSize}) from this browser? This cannot be undone.`,'Delete saved design','Delete'))return;
  try{
-  const designs=readLibrary().filter(item=>item.name!==name);
+  const designs=readLibrary().filter(item=>item.name!==name||item.threadSize!==threadSize);
   localStorage.setItem(libraryKey,JSON.stringify(designs));renderLibrary();notify('Saved design deleted. Current draft kept.');
  }catch{notify('Could not delete the saved design.');}
 }
@@ -202,6 +203,7 @@ function render(){
  $('paste-bands').onclick=pasteBands;
  $('clear-band-selection').onclick=()=>{selectedBands.clear();render();};
  updateBlockControls();
+ $('thread-size').value=state.threadSize||'D';$('design-thread-size').textContent=`Size ${state.threadSize||'D'}`;
  $('design-name').value=state.name;$('coverage').value=state.coverage;$('diameter').value=state.diameter;$('blank').value=state.blank;$('texture').checked=state.texture;
  $('preview-name').textContent=state.name||'Untitled design';$('band-count').textContent=`${state.bands.length} bands`;$('undo').disabled=!history.length;
  const list=$('bands');list.replaceChildren();
@@ -371,7 +373,7 @@ function draw(target=$('preview'),exporting=false){
  const ruler=top+height+30;ctx.strokeStyle=!exporting&&document.documentElement.dataset.theme==='dark'?'#909090':'#8b9eae';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,ruler);ctx.lineTo(left+width,ruler);ctx.moveTo(left,ruler-5);ctx.lineTo(left,ruler+5);ctx.moveTo(left+width,ruler-5);ctx.lineTo(left+width,ruler+5);ctx.stroke();ctx.fillStyle=annotationColor;ctx.font=`${exporting?18:11}px sans-serif`;ctx.textAlign='center';ctx.fillText(`${physicalLength.toFixed(2)} mm · ${summary.turns} finished revolutions`,w/2,ruler+20);
  ctx.save();ctx.translate(Math.max(16,left-18),top+height/2);ctx.rotate(-Math.PI/2);
  ctx.fillText(mode==='flat'?`${(height/pixelsPerMm).toFixed(2)} mm circumference`:`${state.diameter} mm blank`,0,0);ctx.restore();
- if(exporting){ctx.textAlign='left';ctx.font='bold 30px sans-serif';ctx.fillText(state.name||'Untitled design',left,65);ctx.font='18px sans-serif';ctx.fillText(`Size D · ${state.coverage} mm / turn · ${state.diameter} mm blank`,left,h-75);ctx.fillText('Rod Loom • colors and metallic effects are approximations',left,h-40);}
+ if(exporting){ctx.textAlign='left';ctx.font='bold 30px sans-serif';ctx.fillText(state.name||'Untitled design',left,65);ctx.font='18px sans-serif';ctx.fillText(`Size ${state.threadSize||'D'} · ${state.coverage} mm / turn · ${state.diameter} mm blank`,left,h-75);ctx.fillText('Rod Loom • colors and metallic effects are approximations',left,h-40);}
 }
 function addBand(b,{reveal=true}={}){
  if(!isCatalogThread(b)){notify('Choose a Fuji or ProWrap catalog thread.');return false;}
@@ -384,6 +386,15 @@ function addBand(b,{reveal=true}={}){
 $('mirror').onclick=()=>{if(state.bands.length*2>100){notify('Mirroring would exceed 100 bands.');return;}change(()=>state.bands.push(...state.bands.map(reflectedBand).reverse()));notify('Added a reversed copy of every band.');};
 $('reverse').onclick=()=>change(()=>state.bands=state.bands.map(reflectedBand).reverse());$('undo').onclick=()=>{if(history.length){state=history.pop();render();}};
 $('design-name').onchange=()=>change(()=>state.name=$('design-name').value);
+$('thread-size').onchange=async()=>{
+ const target=$('thread-size').value,previous=state;
+ $('thread-size').value=state.threadSize||'D';
+ if(!['A','D'].includes(target)||target===(state.threadSize||'D'))return;
+ const coverage=target==='A'?.15:.25;
+ if(state.bands.length&&!await confirmAction(`Convert this design from Size ${state.threadSize||'D'} to Size ${target}? Coverage will reset to ${coverage} mm per turn. Turn counts stay unchanged, so wrap widths and thread estimates will change. Catalog colors are retained; verify matching Size ${target} products separately. You can Undo this change.`,'Convert thread size','Convert'))return;
+ if(state!==previous)return;
+ change(()=>{state.threadSize=target;state.coverage=coverage;});
+};
 for(const id of ['coverage','diameter']) $(id).onchange=()=>{if(!$(id).value||!$(id).checkValidity()){$(id).reportValidity();$(id).value=state[id];return;}change(()=>state[id]=Number($(id).value));};
 $('blank').onfocus=checkpoint;$('blank').oninput=()=>{state.blank=$('blank').value;refresh();};$('texture').onchange=()=>change(()=>state.texture=$('texture').checked);
 for(const m of ['rod','flat']) $(`${m}-mode`).onclick=()=>{mode=m;for(const other of ['rod','flat']){$(`${other}-mode`).classList.toggle('active',m===other);$(`${other}-mode`).setAttribute('aria-pressed',String(m===other));}draw();};
@@ -402,31 +413,31 @@ function renderStartingPoints(){
  for(const [custom,designs] of [[true,saved],[false,standardDesigns]])for(const preset of designs){
   const btn=make('button','preset'),strip=make('span','preset-strip');
   preset.bands.forEach(b=>{const s=make('span');s.style.background=b.color;s.style.flex=b.turns;strip.append(s);});
-  btn.append(strip,make('span','preset-name',preset.name),make('small','',custom?'Saved in this browser':'Standard design'));
+  btn.append(strip,make('span','preset-name',preset.name),make('small','',`${custom?'Saved in this browser':'Standard design'} · Size ${preset.threadSize||'D'}`));
   btn.onclick=async()=>{
    if(!await canReplaceDesign())return;
-   change(()=>{state={...structuredClone(preset),quickColors:structuredClone(preset.quickColors||[])};});
+   change(()=>{state={...validate(structuredClone(preset)),quickColors:structuredClone(preset.quickColors||[])};});
    markClean();
   };
   const entry=make('div','library-entry');entry.append(btn);
   if(custom){
    const remove=make('button','icon-button library-delete');
-   remove.title=`Delete ${preset.name}`;remove.setAttribute('aria-label',remove.title);
+   remove.title=`Delete ${preset.name} (Size ${preset.threadSize||'D'})`;remove.setAttribute('aria-label',remove.title);
    remove.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg>';
-   remove.onclick=()=>deleteDesign(preset.name);entry.append(remove);
+   remove.onclick=()=>deleteDesign(preset.name,preset.threadSize||'D');entry.append(remove);
   }
   list.append(entry);
  }
 }
-const filename=()=> (state.name.trim().replace(/[^a-z0-9_-]+/gi,'-')||'rod-loom');
+const filename=()=> (state.name.trim().replace(/[^a-z0-9_-]+/gi,'-')||'rod-loom')+`-size-${(state.threadSize||'D').toLowerCase()}`;
 function download(blob,name){const url=URL.createObjectURL(blob),a=make('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
 $('save').onclick=async()=>{
  const name=$('design-name').value.trim();
  if(!name){notify('Give your design a name before saving.');$('design-name').focus();return;}
  try{
   const design=validate({...state,name}),designs=readLibrary();
-  const index=designs.findIndex(item=>item.name===name);
-  if(index>=0&&!await confirmAction(`Replace the saved design “${name}”?`,'Replace saved design','Replace'))return;
+  const index=designs.findIndex(item=>item.name===name&&item.threadSize===design.threadSize);
+  if(index>=0&&!await confirmAction(`Replace the saved design “${name}” (Size ${design.threadSize})?`,'Replace saved design','Replace'))return;
   if(index>=0)designs[index]=design;else designs.push(design);
   localStorage.setItem(libraryKey,JSON.stringify(designs));
   if(state.name!==name)change(()=>state.name=name);
