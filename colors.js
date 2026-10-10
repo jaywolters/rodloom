@@ -11,7 +11,46 @@
   const result={catalog:true,brand:value.brand,sku:value.sku,name:value.name,color:value.color,finish:value.finish};
   for(const field of ['line','code'])if(typeof value[field]==='string'&&value[field].length<=160)result[field]=value[field];
   if(typeof value.source==='string'&&value.source.length<=2000&&/^https?:\/\//.test(value.source))result.source=value.source;
+  if(typeof value.paletteLetter==='string'&&/^[A-Z]{1,3}$/.test(value.paletteLetter))result.paletteLetter=value.paletteLetter;
   return result;
+ }
+ function letter(index){
+  let result='';
+  do{result=String.fromCharCode(65+index%26)+result;index=Math.floor(index/26)-1;}while(index>=0);
+  return result;
+ }
+ function labelPalette(values,newestFirst=true){
+  const used=new Set(),result=values.map(value=>({...value}));
+  for(const value of result){
+   if(/^[A-Z]{1,3}$/.test(value.paletteLetter)&&!used.has(value.paletteLetter))used.add(value.paletteLetter);
+   else delete value.paletteLetter;
+  }
+  // New colors appear first in the shelf; assign letters in collection order.
+  for(const value of (newestFirst?result.slice().reverse():result))if(!value.paletteLetter){
+   let index=0;while(used.has(letter(index)))index++;
+   value.paletteLetter=letter(index);used.add(value.paletteLetter);
+  }
+  return result;
+ }
+ function parsePattern(text,palette){
+  const tokens=text.trim().split(/[,\n]+/);
+  if(!text.trim())throw Error('Type a pattern first.');
+  if(tokens.length>100)throw Error('Maximum 100 bands per pattern.');
+  const lookup=new Map(labelPalette(palette).map(value=>[value.paletteLetter,value]));
+  return tokens.map((token,index)=>{
+   const match=token.trim().toUpperCase().match(/^(\d+)\s*([/\\]?)\s*([A-Z]+(?:\s*\+\s*[A-Z]+)?)$/);
+   if(!match)throw Error(`Band ${index+1}: use 12A, 4/AB, or 4\\AB.`);
+   const turns=Number(match[1]),direction=match[2],code=match[3];
+   if(!Number.isInteger(turns)||turns<1||turns>1000)throw Error(`Band ${index+1}: turns must be 1–1000.`);
+   const letters=direction?(code.includes('+')?code.split(/\s*\+\s*/):code.length===2?[...code]:[]):[code];
+   if(letters.length!==(direction?2:1))throw Error(`Band ${index+1}: a spiral needs two colors (AB or A+B).`);
+   const threads=letters.map(label=>{
+    const value=thread(lookup.get(label));
+    if(!value)throw Error(`Band ${index+1}: color ${label} is not in the quick palette.`);
+    delete value.paletteLetter;return value;
+   });
+   return {...threads[0],turns,...(direction?{wrap:'spiral',secondary:threads[1],direction:direction==='/'?1:-1}:{})};
+  });
  }
  const key=value=>JSON.stringify([value.brand,value.line||'',value.sku]);
  function unique(values){
@@ -20,14 +59,25 @@
   return [...result.values()].slice(0,limit);
  }
  function fromBands(bands){return unique(bands.flatMap(b=>b.wrap==='spiral'?[b,b.secondary]:[b]));}
- function toBand(value){const color=thread(value);return color?{...color,turns:color.finish==='metallic'?5:10}:null;}
+ function toBand(value){const color=thread(value);if(color)delete color.paletteLetter;return color?{...color,turns:color.finish==='metallic'?5:10}:null;}
  function decode(raw){
   if(!raw)return {quick:[],favorites:[]};
   const data=JSON.parse(raw);
   if(!data||![1,2].includes(data.version)||!Array.isArray(data.favorites)||data.version===1&&!Array.isArray(data.quick))throw Error('Invalid color library');
   return {quick:data.version===1?unique(data.quick):[],favorites:unique(data.favorites)};
  }
- const api={limit,thread,key,unique,fromBands,toBand,decode};
+ function decodePatterns(raw){
+  if(!raw)return [];
+  const data=JSON.parse(raw);
+  if(!data||data.version!==1||!Array.isArray(data.patterns)||data.patterns.length>100)throw Error('Invalid saved patterns');
+  const names=new Set();
+  for(const item of data.patterns){
+   if(!item||typeof item.name!=='string'||!item.name.trim()||item.name.length>80||typeof item.text!=='string'||!item.text.trim()||item.text.length>10000||names.has(item.name.toLowerCase()))throw Error('Invalid saved pattern');
+   names.add(item.name.toLowerCase());
+  }
+  return data.patterns.map(({name,text})=>({name,text}));
+ }
+ const api={limit,thread,key,unique,fromBands,toBand,decode,letter,labelPalette,parsePattern,decodePatterns};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ThreadColors=api;
 })(typeof window==='undefined'?globalThis:window);
 
@@ -39,7 +89,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   try{library=colors.decode(localStorage.getItem(storageKey));storageWarning('');}
   catch{storageWarning('Saved colors unavailable. Colors collected now will stay in this session until browser storage is available.');}
  }
- const collection=section=>section==='quick'?(state.quickColors||[]):library.favorites;
+ const collection=section=>section==='quick'?colors.labelPalette(state.quickColors||[]):library.favorites;
  const contains=(section,value)=>collection(section).some(item=>colors.key(item)===colors.key(value));
  function save(){
   try{localStorage.setItem(storageKey,JSON.stringify({version:2,favorites:library.favorites}));storageWarning('');}
@@ -48,11 +98,12 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
  }
  function toggle(section,value){
   const color=colors.thread(value);if(!color)return;
+  delete color.paletteLetter;
   const current=collection(section);
   if(!contains(section,color)&&current.length>=colors.limit){notify(`Maximum ${colors.limit} saved colors. Remove a color first.`);return;}
   const next=contains(section,color)?current.filter(item=>colors.key(item)!==colors.key(color)):section==='quick'?[color,...current]:[...current,color];
   if(section==='quick'){
-   change(()=>{state.quickColors=next;});
+   change(()=>{state.quickColors=colors.labelPalette(next);});
   }else{library.favorites=next;save();}
  }
  function selectTab(favorites,focus=false){
@@ -65,7 +116,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   const color=colors.thread(value);if(!color)return;
   if(!contains('quick',color)&&collection('quick').length>=colors.limit){notify(`Maximum ${colors.limit} saved colors. Remove a color first.`);return;}
   highlightedQuick=colors.key(color);
-  if(!contains('quick',color))change(()=>{state.quickColors=[color,...collection('quick')];});
+  if(!contains('quick',color))change(()=>{state.quickColors=colors.labelPalette([color,...collection('quick')]);});
   else render();
   selectTab(false);
   $('quick-colors-panel').closest('details').open=true;
@@ -87,8 +138,10 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   for(const value of collection(section)){
    const identity=colors.key(value),row=make('div',section==='quick'&&identity===highlightedQuick?'saved-color quick-highlight':'saved-color');
    row.dataset.colorKey=identity;
-   const choose=action(`Add ${value.name} — ${describe(value)}`,'',()=>add(value),`${section}-add-${identity}`);choose.className='saved-color-choice';
-   const label=make('span','saved-color-label');label.append(make('strong','',value.name),make('small','',describe(value)));
+   const choose=action(`Add ${section==='quick'?value.paletteLetter+': ':''}${value.name} — ${describe(value)}`,'',()=>add(value),`${section}-add-${identity}`);choose.className='saved-color-choice';
+   const label=make('span','saved-color-label'),name=make('span','saved-color-name');
+   if(section==='quick')name.append(make('span','palette-letter',value.paletteLetter));
+   name.append(make('strong','',value.name));label.append(name,make('small','',describe(value)));
    if(section==='quick'&&selectedBands.size){
     const replace=action(`Replace selected bands with ${value.name}`,'⇄',()=>replaceSelectedBands(value),`${section}-replace-${identity}`);
     replace.className='color-action color-replace';row.append(replace);
@@ -118,6 +171,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    const button=action(`Collect ${value.name} in Quick palette — ${describe(value)}`,'',()=>revealQuick(value),`design-${colors.key(value)}`);
    button.className='design-color';button.append(swatch(value),make('span','',value.name));list.append(button);
   }
+  $('clear-quick-colors').disabled=!collection('quick').length;
   $('quick-color-count').textContent=collection('quick').length;$('favorite-color-count').textContent=library.favorites.length;
   renderShelf('quick','quick-colors');renderShelf('favorites','favorite-colors');
   window.dispatchEvent(new Event('colorschange'));
@@ -126,14 +180,83 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    (control||$($('quick-colors-panel').hidden?'favorite-colors-tab':'quick-colors-tab')).focus({preventScroll:true});
   }
  }
+ $('clear-quick-colors').onclick=()=>{
+  if(!collection('quick').length)return;
+  change(()=>{state.quickColors=[];});
+  notify('Quick palette cleared. Bands and favorites kept. Undo to restore the palette.');
+ };
  $('clone-design-colors').onclick=()=>{
   const threads=colors.fromBands(state.bands),before=collection('quick').length;
   const combined=colors.unique([...collection('quick'),...threads]);
-  if(combined.length!==before)change(()=>{state.quickColors=combined;});
+  if(combined.length!==before)change(()=>{state.quickColors=colors.labelPalette(combined,false);});
   selectTab(false);
   const omitted=threads.some(value=>!contains('quick',value));
   notify(omitted?`Palette limit reached (${colors.limit} colors). Remove colors to collect more.`:`${combined.length-before} new colors collected · click any swatch to reuse it`);
  };
+ const patternsKey='rodloom-named-patterns-v1';
+ let namedPatterns=[],patternsAvailable=true;
+ function loadNamedPatterns(){
+  try{namedPatterns=colors.decodePatterns(localStorage.getItem(patternsKey));patternsAvailable=true;}
+  catch{patternsAvailable=false;$('pattern-save-status').textContent='Saved patterns are unavailable. Check browser storage before saving.';}
+ }
+ function renderNamedPatterns(selected=''){
+  const select=$('named-patterns');select.replaceChildren();
+  const placeholder=make('option','','Choose a saved pattern…');placeholder.value='';select.append(placeholder);
+  for(const pattern of namedPatterns){const option=make('option','',pattern.name);option.value=pattern.name;select.append(option);}
+  select.value=selected;
+ }
+ function askToSavePattern(){
+  const text=$('pattern-text').value.trim();
+  $('pattern-save-prompt').hidden=!text||namedPatterns.some(pattern=>pattern.text===text);
+ }
+ $('named-patterns').onchange=()=>{
+  const pattern=namedPatterns.find(item=>item.name===$('named-patterns').value);
+  if(!pattern)return;
+  $('pattern-text').value=pattern.text;$('pattern-save-name').value=pattern.name;
+  $('pattern-error').textContent='';$('pattern-save-status').textContent='';askToSavePattern();
+ };
+ $('save-named-pattern').onclick=()=>{
+  $('pattern-save-status').textContent='';
+  try{
+   loadNamedPatterns();
+   if(!patternsAvailable)throw Error('Saved patterns are unavailable. Check browser storage before saving.');
+   const name=$('pattern-save-name').value.trim(),text=$('pattern-text').value.trim();
+   if(!name||name.length>80)throw Error('Enter a pattern name (up to 80 characters).');
+   if(text.length>10000)throw Error('Pattern text is too long.');
+   colors.parsePattern(text,collection('quick'));
+   const existing=namedPatterns.find(pattern=>pattern.name.toLowerCase()===name.toLowerCase());
+   if(existing&&existing.text!==text)throw Error('That pattern name is already saved. Choose a different name.');
+   if(!existing&&namedPatterns.length>=100)throw Error('Maximum 100 named patterns saved.');
+   const next=existing?namedPatterns:[...namedPatterns,{name,text}];
+   localStorage.setItem(patternsKey,JSON.stringify({version:1,patterns:next}));
+   namedPatterns=next;renderNamedPatterns(existing?existing.name:name);askToSavePattern();
+   $('pattern-save-status').textContent=`Pattern “${name}” saved in this browser.`;
+  }catch(error){$('pattern-save-status').textContent=error.message;}
+ };
+ $('type-pattern').onclick=()=>{
+  render();
+  $('pattern-save-status').textContent='';loadNamedPatterns();renderNamedPatterns();
+  askToSavePattern();
+  const legend=$('pattern-palette');legend.replaceChildren();
+  for(const value of collection('quick').slice().sort((a,b)=>a.paletteLetter.length-b.paletteLetter.length||a.paletteLetter.localeCompare(b.paletteLetter))){
+   const entry=make('span','pattern-color');entry.append(swatch(value),make('span','',`${value.paletteLetter}: ${value.name}`));legend.append(entry);
+  }
+  if(!collection('quick').length)legend.append(make('p','hint','Add colors to your quick palette first.'));
+  $('pattern-error').textContent='';$('pattern-dialog').showModal();$('pattern-text').focus();
+ };
+ $('pattern-cancel').onclick=()=>$('pattern-dialog').close();
+ $('pattern-form').onsubmit=event=>{
+  event.preventDefault();
+  try{
+   const bands=colors.parsePattern($('pattern-text').value,collection('quick'));
+   const replace=$('pattern-replace').checked;
+   if((replace?0:state.bands.length)+bands.length>100)throw Error('This would exceed 100 bands. Choose Replace existing bands or shorten the pattern.');
+   change(()=>{state.bands=replace?bands:[...state.bands,...bands];selectedBands.clear();});
+   $('pattern-dialog').close();$('bands').closest('details').open=true;
+   notify(`${bands.length} bands ${replace?'built':'added'} from pattern. Undo to restore the previous design.`);
+  }catch(error){$('pattern-error').textContent=error.message;}
+ };
+ $('pattern-text').oninput=()=>{$('pattern-error').textContent='';$('pattern-save-status').textContent='';$('named-patterns').value='';askToSavePattern();};
  $('browse-colors').onclick=()=>{
   document.querySelector('.palette-lookup').open=true;
   $('color-search').focus();$('color-search').scrollIntoView({block:'nearest'});
