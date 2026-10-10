@@ -54,7 +54,7 @@ function workspace(stored=null,failStorage=false,draft={}){
  const $=id=>elements[id]??=new Element();
  const document={activeElement:{dataset:{}},querySelector:()=>$('catalog'),querySelectorAll:()=>[]};
  const window={addEventListener:(name,fn)=>listeners[name]=fn,dispatchEvent:event=>listeners[event.type]?.(event)};
- const context=vm.createContext({window,document,$,Event:class{constructor(type){this.type=type;}},state:{bands,...draft},
+ const context=vm.createContext({window,document,$,selectedBands:new Set(),Event:class{constructor(type){this.type=type;}},state:{bands,...draft},
   make:(...args)=>new Element(...args),notify:message=>messages.push(message),addBand:band=>{bands.push(band);return true;},
   localStorage:{getItem:key=>{if(failStorage)throw Error('Blocked');return storage.get(key)||null;},setItem:(key,value)=>{if(failStorage)throw Error('Full');storage.set(key,value);}}
  });
@@ -117,6 +117,26 @@ test('design color buttons collect and reveal threads without adding bands or du
  assert.equal(context.state.quickColors.length,2);
  assert.equal(context.state.quickColors[0].sku,gold.sku);
  assert.equal(JSON.stringify(bands),before);
+});
+
+test('replace buttons only appear with selected bands and precede the color chip',()=>{
+ const {$,api,context}=workspace();
+ api.toggleQuick(red);
+ const controls=()=>$('quick-colors').children[0].children;
+ assert.equal(controls().length,3);
+ assert.equal(controls()[0].className,'saved-color-choice');
+ context.selectedBands.add(context.state.bands[0]);
+ let replacement;
+ context.replaceSelectedBands=value=>{replacement=value;};
+ api.render();
+ assert.equal(controls().length,4);
+ assert.equal(controls()[0].className,'color-action color-replace');
+ assert.equal(controls()[1].className,'saved-color-choice');
+ controls()[0].onclick();
+ assert.equal(replacement.sku,red.sku);
+ context.selectedBands.clear();api.render();
+ assert.equal(controls().length,3);
+ assert.equal(controls()[0].className,'saved-color-choice');
 });
 
 test('new quick palette colors appear first and persist in that order',()=>{

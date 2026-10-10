@@ -5,6 +5,43 @@ const fs=require('node:fs');
 
 const html=fs.readFileSync('index.html','utf8');
 const css=fs.readFileSync('style.css','utf8');
+const vm=require('node:vm');
+
+function panelLayout(raw=null,blocked=false){
+ const selectors=['#thread-catalog','.scale-settings','.starting-points','.color-workspace','.thread-design'];
+ const panels=Object.fromEntries(selectors.map((selector,i)=>[selector,{open:i>=3,addEventListener(type,fn){this[type]=fn;}}]));
+ const listeners={},storage=new Map(raw===null?[]:[['rodloom-layout-v1',raw]]);
+ vm.runInNewContext(fs.readFileSync('layout.js','utf8'),{
+  document:{querySelector:selector=>panels[selector]},
+  window:{addEventListener:(type,fn)=>{listeners[type]=fn;}},
+  localStorage:{getItem:key=>{if(blocked)throw Error('Blocked');return storage.get(key)||null;},setItem:(key,value)=>{if(blocked)throw Error('Blocked');storage.set(key,value);}}
+ });
+ return {panels,listeners,storage};
+}
+
+test('catalog defaults to collapsed and layout restores all panels from the last session',()=>{
+ assert.ok(html.includes('class="palette-lookup" data-auto-gray="true"><summary>'));
+ assert.ok(html.indexOf('<script src="layout.js">')<html.indexOf('<script src="app.js">'));
+ const {panels,storage,listeners}=panelLayout();
+ assert.equal(panels['#thread-catalog'].open,false);
+ panels['#thread-catalog'].open=true;panels['#thread-catalog'].toggle();
+ panels['.starting-points'].open=true;
+ panels['.thread-design'].open=false;
+ listeners.pagehide();
+ const restored=panelLayout(storage.get('rodloom-layout-v1')).panels;
+ for(const selector of Object.keys(panels))assert.equal(restored[selector].open,panels[selector].open);
+});
+
+test('invalid or unavailable layout storage preserves defaults and does not break toggles',()=>{
+ for(const raw of ['{','null','{"version":2,"panels":{"catalog":true}}','{"version":1,"panels":{"catalog":"true"}}']){
+  const {panels}=panelLayout(raw);
+  assert.equal(panels['#thread-catalog'].open,false);
+  assert.equal(panels['.thread-design'].open,true);
+ }
+ const {panels,listeners}=panelLayout(null,true);
+ assert.doesNotThrow(()=>panels['#thread-catalog'].toggle());
+ assert.doesNotThrow(()=>listeners.pagehide());
+});
 
 test('Thread bands heading precedes the design controls within its accordion',()=>{
  assert.ok(html.includes('<aside class="editor" aria-label="Design editor"><details class="thread-design" open><summary>Thread bands</summary><div class="design-name-row">'));
@@ -53,6 +90,23 @@ test('design library fills available width with responsive columns and automatic
 
 test('mobile library cards fill the available width in one column',()=>{
  assert.match(css,/@media\(max-width:540px\)\{\s+\/\*[^]*?\*\/\s+#presets\{grid-template-columns:minmax\(0,1fr\)\}/);
+});
+
+test('palette and catalog action buttons have compact edge clearance without doubled row padding',()=>{
+ assert.ok(css.includes('--control-inset:3px;'));
+ assert.match(css,/\.saved-color\{[^}]*padding:var\(--control-inset\)/);
+ assert.match(css,/\.saved-color-choice\{[^}]*padding:0 4px/);
+ assert.match(css,/\.catalog-actions\{[^}]*padding:var\(--control-inset\)/);
+ assert.ok(css.includes('.saved-color>button:focus-visible,.catalog-actions>button:focus-visible{outline-offset:1px}'));
+});
+
+test('all collapsible headings share one disclosure icon and spacing',()=>{
+ assert.match(css,/summary\{[^}]*gap:6px;[^}]*list-style:none/);
+ assert.ok(css.includes('summary::-webkit-details-marker{display:none}'));
+ assert.match(css,/summary::before\{[^}]*flex:0 0 8px;[^}]*height:8px;[^}]*clip-path:/);
+ assert.match(css,/details\[open\]>summary::before\{clip-path:/);
+ assert.ok(!css.includes('.dock-heading::before'));
+ assert.match(css,/\.dock-heading\{[^}]*gap:6px/);
 });
 
 test('desktop accordion headings stay pinned like Thread catalog',()=>{

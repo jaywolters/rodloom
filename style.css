@@ -5,6 +5,7 @@
  --line:#c4c7cb; --field:#fff; --hover:#e1e4e8; --stage:#e6edf2;
  --blue:#245fa6; --selected:#dce9fa; --focus:#2879da; --subtle:#e9ebed;
  --radius:3px;
+ --control-inset:3px;
  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
  font-size:12px;
 }
@@ -83,7 +84,10 @@ canvas{display:block;width:100%;height:100%}
 .pattern-actions{display:flex;gap:4px}
 .pattern-actions button{font-size:10px;padding:4px 8px;background:var(--white)}
 .scale-settings{background:var(--subtle);font-size:11px}
-summary{cursor:pointer;user-select:none;font-size:11px;font-weight:600}
+summary{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:11px;font-weight:600;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'';display:block;flex:0 0 8px;width:8px;height:8px;background:currentColor;clip-path:polygon(20% 0,85% 50%,20% 100%)}
+details[open]>summary::before{clip-path:polygon(0 20%,100% 20%,50% 85%)}
 summary:hover{color:var(--blue)}
 .scale-settings>summary{padding:7px 10px;color:var(--muted)}
 .scale-controls{display:flex;flex-wrap:wrap;gap:10px 16px;padding:10px 12px}
@@ -126,7 +130,7 @@ summary:hover{color:var(--blue)}
 .catalog-photo{width:100%;height:54px;object-fit:contain;background:#fff;border-radius:2px}
 .sample-chip{position:absolute;right:10px;top:41px;width:20px;height:20px;border:2px solid #fff;border-radius:2px;box-shadow:0 0 0 1px #0003}
 .catalog-choice .stock-note:empty{display:none}
-.catalog-actions{display:flex;gap:1px;border-top:1px solid var(--line);padding:3px}
+.catalog-actions{display:flex;gap:1px;border-top:1px solid var(--line);padding:var(--control-inset)}
 .catalog-actions button{font-size:10px;padding:3px 4px;border-color:transparent;background:transparent}
 .catalog-collect{flex:1;text-align:left}
 .catalog-actions .catalog-favorite{font-size:16px;line-height:1;padding:2px 5px}
@@ -150,12 +154,9 @@ summary:hover{color:var(--blue)}
 .library-delete{position:absolute;right:5px;bottom:5px;background:transparent;border-color:transparent}
 /* Swatches are a persistent tool, independent of the active design and its undo stack. */
 .color-workspace{margin-bottom:8px}
-.dock-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--white)}
+.dock-heading{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--white)}
 .dock-heading h2{white-space:nowrap;margin-right:auto}
-.dock-heading{justify-content:flex-start;list-style:none}
-.dock-heading::-webkit-details-marker{display:none}
-.dock-heading::before{content:'▸';font-size:11px}
-.color-workspace[open]>.dock-heading::before{content:'▾'}
+.dock-heading{justify-content:flex-start}
 .count{font-size:10px;font-weight:400;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
 .compact-button{font-size:10px;padding:3px 6px}
 .design-swatches{display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px 9px;max-height:76px;overflow-y:auto}
@@ -169,10 +170,12 @@ summary:hover{color:var(--blue)}
 .palette-panel-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px 3px;font-size:10px;color:var(--muted)}
 .text-button{background:transparent;border:0;color:var(--blue);font-size:10px;padding:2px 0}
 .color-shelf{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:5px 8px 8px}
-.saved-color{display:flex;align-items:center;min-width:0;border:1px solid transparent;border-radius:2px}
+/* Put the compact gutter on the row so every button—not just the chip—gets it. */
+.saved-color{display:flex;align-items:center;min-width:0;padding:var(--control-inset);border:1px solid transparent;border-radius:2px}
+.saved-color>button:focus-visible,.catalog-actions>button:focus-visible{outline-offset:1px}
 .saved-color:hover,.saved-color:focus-within{background:var(--subtle);border-color:var(--line)}
 .saved-color.quick-highlight{background:var(--subtle);border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue);scroll-margin-block:20px}
-.saved-color-choice{display:flex;align-items:center;flex:1;gap:8px;min-width:0;padding:3px 4px;text-align:left;background:transparent;border:0}
+.saved-color-choice{display:flex;align-items:center;flex:1;gap:8px;min-width:0;padding:0 4px;text-align:left;background:transparent;border:0}
 .saved-color-label{display:flex;flex-direction:column;min-width:0;flex:1}
 .saved-color-label strong{font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .saved-color-label small{font-size:9px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

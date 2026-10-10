@@ -70,7 +70,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
   selectTab(false);
   $('quick-colors-panel').closest('details').open=true;
   const row=[...$('quick-colors').children].find(el=>el.dataset.colorKey===highlightedQuick);
-  if(row){row.children[0].focus({preventScroll:true});row.scrollIntoView({block:'center',inline:'nearest'});}
+  if(row){[...row.children].find(el=>el.className==='saved-color-choice').focus({preventScroll:true});row.scrollIntoView({block:'center',inline:'nearest'});}
  }
  function add(value){
   const band=colors.toBand(value);
@@ -89,13 +89,15 @@ if(typeof window!=='undefined'&&typeof document!=='undefined')(() => {
    row.dataset.colorKey=identity;
    const choose=action(`Add ${value.name} — ${describe(value)}`,'',()=>add(value),`${section}-add-${identity}`);choose.className='saved-color-choice';
    const label=make('span','saved-color-label');label.append(make('strong','',value.name),make('small','',describe(value)));
+   if(section==='quick'&&selectedBands.size){
+    const replace=action(`Replace selected bands with ${value.name}`,'⇄',()=>replaceSelectedBands(value),`${section}-replace-${identity}`);
+    replace.className='color-action color-replace';row.append(replace);
+   }
    choose.append(swatch(value),label);row.append(choose);
    const favorite=contains('favorites',value);
    const star=action(`${favorite?'Unfavorite':'Favorite'} ${value.name}`,favorite?'★':'☆',()=>toggle('favorites',value),`${section}-star-${identity}`);
    star.setAttribute('aria-pressed',String(favorite));row.append(star);
    if(section==='quick'){
-    const replace=action(`Replace selected bands with ${value.name}`,'⇄',()=>replaceSelectedBands(value),`${section}-replace-${identity}`);
-    replace.className='color-action color-replace';row.append(replace);
     row.append(action(`Remove ${value.name} from this design's quick palette`,'×',()=>toggle('quick',value),`${section}-remove-${identity}`));
    }
    else{

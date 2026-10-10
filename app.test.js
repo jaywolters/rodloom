@@ -115,6 +115,18 @@ test('preview clicks reveal the exact band without changing copy selection or de
  assert.equal(context.history.length,0);
 });
 
+test('checking and unchecking bands immediately refreshes palette replacement controls',()=>{
+ const {context,list}=editor();let refreshed=0;
+ context.colorWorkspace={render(){refreshed++;}};
+ const checkbox=list.children[0].children[1];
+ checkbox.checked=true;checkbox.onchange();
+ assert.equal(context.selectedBands.size,1);
+ assert.equal(refreshed,1);
+ checkbox.checked=false;checkbox.onchange();
+ assert.equal(context.selectedBands.size,0);
+ assert.equal(refreshed,2);
+});
+
 test('band chips reveal the correct quick palette thread including both spiral strands',()=>{
  const {context,state,list}=editor(),revealed=[];
  context.colorWorkspace={render(){},revealQuick:thread=>revealed.push(thread)};
